@@ -234,7 +234,8 @@ class Dashboard extends React.Component {
     );
   }
   getData = () => {
-    return [new window.google.maps.LatLng(39.0911,-94.4155)]
+    return [{location: new window.google.maps.LatLng(39.0911,-94.4155), weight: 0.5}]
+    // return [new window.google.maps.LatLng(39.0911,-94.4155)]
   }
 }
 
