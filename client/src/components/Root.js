@@ -20,7 +20,7 @@ class Root extends React.Component {
   }
 
   componentDidMount() {
-    document.title = "covid";
+    document.title = "6.08 Covid 19 Load Balancer";
     this.setState({isLoading: true})
   }
 

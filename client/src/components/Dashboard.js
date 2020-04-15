@@ -1,21 +1,15 @@
 import React from "react";
 import { BrowserRouter, Route } from "react-router-dom";
-
 import "../css/Map.css";
 import { get, post, getCity, getCountry } from "../utilities";
-
 import {withGoogleMap,GoogleMap,withScriptjs,Marker, Circle, InfoWindow} from "react-google-maps";
 import Geocode from "react-geocode";
 import Autocomplete from "react-google-autocomplete"
 import { Link } from "react-router-dom";
 import marker from "../public/map-marker.png";
-import ReactLoading from "react-loading";
 import HeatmapLayer from "react-google-maps/lib/components/visualization/HeatmapLayer";
-
 import gpsButton from "../public/crosshairs-gps.png"
-
 require("dotenv").config();
-
 Geocode.setApiKey(process.env.REACT_APP_GOOGLE_API);
 Geocode.enableDebug();
 
@@ -39,7 +33,6 @@ class Dashboard extends React.Component {
   componentDidMount() {
     document.title = "Dashboard";
     this.handleGeolocationNoSSL();
-    //this.handleLocationNoPermission()
   }
 
   handleLocationNoPermission = () => {
@@ -150,7 +143,6 @@ class Dashboard extends React.Component {
   }
 
   render() {
-    // let points = this.getData();
     const AsyncMap =
       withScriptjs(
       withGoogleMap
@@ -193,12 +185,10 @@ class Dashboard extends React.Component {
                   strokeWeight: "1"
                 }}
               />
-
         <HeatmapLayer
           data={this.getData()}
           options={{radius: 20}}
         />
-
           <Autocomplete
             style={{
               width: "35%",

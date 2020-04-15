@@ -16,9 +16,7 @@ const RouteContainer = posed.div({
   exit: { opacity: 0 }
 });
 
-
 const App = () => (
-
   <Route
     render={({ location }) => (
       <div>
@@ -26,7 +24,6 @@ const App = () => (
             <RouteContainer key={location.pathname}>
               <Switch location={location}>
                 <Route exact path="/" component={Root} key="home" />
-                <Route path="/dashboard" component={Dashboard} key="dashboard" />
               </Switch>
             </RouteContainer>
           </PoseGroup>
