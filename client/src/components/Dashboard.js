@@ -10,6 +10,7 @@ import Autocomplete from "react-google-autocomplete"
 import { Link } from "react-router-dom";
 import marker from "../public/map-marker.png";
 import ReactLoading from "react-loading";
+import HeatmapLayer from "react-google-maps/lib/components/visualization/HeatmapLayer";
 
 import gpsButton from "../public/crosshairs-gps.png"
 
@@ -38,7 +39,7 @@ class Dashboard extends React.Component {
   componentDidMount() {
     document.title = "Dashboard";
     this.handleGeolocationNoSSL();
-    //this.handleLocationNoPermission();
+    //this.handleLocationNoPermission()
   }
 
   handleLocationNoPermission = () => {
@@ -149,12 +150,16 @@ class Dashboard extends React.Component {
   }
 
   render() {
+    // let points = this.getData();
     const AsyncMap =
       withScriptjs(
       withGoogleMap
     (props => (
         <GoogleMap
           google={window.google}
+            bootstrapURLKeys={{
+            libraries: 'visualization',
+          }}
           onClick={this.mapOnClick}
           zoom={6}
           center={this.state.center}
@@ -189,6 +194,11 @@ class Dashboard extends React.Component {
                 }}
               />
 
+        <HeatmapLayer
+          data={this.getData()}
+          options={{radius: 20}}
+        />
+
           <Autocomplete
             style={{
               width: "35%",
@@ -215,7 +225,7 @@ class Dashboard extends React.Component {
     return (
       <>
         <AsyncMap
-          googleMapURL={"https://maps.googleapis.com/maps/api/js?key=" + process.env.REACT_APP_GOOGLE_API + "&libraries=places"}
+          googleMapURL={"https://maps.googleapis.com/maps/api/js?key=" + process.env.REACT_APP_GOOGLE_API + "&libraries=places,visualization"}
           loadingElement={<div style={{ height: `100%` }} />}
           containerElement={<div style={{ height: "100vh", width: `100%`, position: `relative` }}/>}
           mapElement={<div style={{ height: `100%`, width: `100%`, position: `relative` }}/>}
@@ -232,6 +242,9 @@ class Dashboard extends React.Component {
         </div>
       </>
     );
+  }
+  getData = () => {
+    return [new window.google.maps.LatLng(39.0911,-94.4155)]
   }
 }
 
