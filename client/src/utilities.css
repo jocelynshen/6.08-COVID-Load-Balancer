@@ -1,0 +1,174 @@
+/**
+* Welcome to your ✨𝔲𝔱𝔦𝔩𝔦𝔱𝔶 𝔰𝔱𝔶𝔩𝔢𝔰✨!
+* This file includes utility classes that are super simple
+* and can be used to add general styles; variable definitions
+* for colors; and styles to html, body, and other high level
+* DOMs.
+*
+* All utility classes start with a `u-` and all do
+* one basic CSS thing (for example, making the font-weight
+* 600 for bolding) or are super generic.
+*
+* This is 𝙉𝙊𝙏 the place to define classes for components or
+* do rigorous styling. You shoud not need to change this file
+* much after initial creation.
+*/
+
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:300,600");
+@import url('https://fonts.googleapis.com/css?family=Alfa+Slab+One|Bowlby+One+SC|Concert+One|Francois+One|Fredoka+One|Luckiest+Guy|Montserrat:800|Passion+One:400,700|Seymour+One&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Josefin+Sans:100,300,400,700|Lato:100,300,400,700&display=swap');
+
+
+
+:root {
+  --blueDark: #5169A7;
+  --bluePrimary: #B1E0FD;
+  --blueLight: #E1ECF4;
+  --darkPink: rgb(228, 135, 144);
+  --pink: #E99FA8;
+  --mediumPink: rgb(247, 170, 177);
+  --lightPink: #fabbc3;
+  --brown: #6D411E;
+  --lightYellow: rgb(253, 231, 174);
+  --yellow: #FFD567;
+  --darkYellow: #FFC500;
+  --white: #fff;
+  --primary: #5169a7;
+  --primary--dim: #6987db;
+  --darkestgrey: #8a8a97;
+  --darkgrey: #e7e7e7;
+  --grey: #f7f7f7;
+  --greyblue: #778899;
+  --white: #fff;
+
+  --xs: 4px;
+  --s: 8px;
+  --m: 16px;
+  --l: 24px;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+h1  {
+  display: flex;
+  justify-content: flex-start;
+  font-size: 100px;
+  color: var(--primary);
+}
+
+h2  {
+  display: flex;
+  justify-content: center;
+  align-content: flex-start;
+  font-size: 32px;
+  font-weight: 200;
+  font-family: 'Open Sans', sans-serif;
+  color: var(--pink);
+  text-align: center;
+}
+
+h3 {
+  color: var(--blueDark);
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 700;
+  font-size: 30px;
+  text-align: center;
+}
+
+h4 {
+  color: var(--blueDark);
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 400;
+  text-align: center;
+}
+
+h5 {
+  color: var(--darkestgrey);
+  font-family: 'Lato', sans-serif;
+  font-weight: 300;
+  text-align: center;
+  font-size: 25px;
+  margin-top: 0px;
+  margin-bottom: 20px;
+}
+
+p {
+  color: var(--darkestgrey);
+  font-family: 'Lato', sans-serif;
+  font-weight: 300;
+  text-align: center;
+  font-size: 17px;
+}
+
+form {
+  flex-grow: 1;
+}
+
+.u-flex {
+  display: flex;
+}
+
+.u-flex-justifyCenter {
+  justify-content: center;
+}
+
+.u-flex-alignCenter {
+  align-items: center;
+}
+
+.u-inlineBlock {
+  display: inline-block;
+}
+
+.u-bold {
+  font-weight: 600;
+}
+
+.u-textCenter {
+  text-align: center;
+}
+
+.u-pointer {
+  cursor: pointer;
+}
+
+.u-link {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.u-link:hover {
+  color: var(--primary--dim);
+}
+
+.example-enter {
+  opacity: 0.01;
+}
+
+.example-enter.example-enter-active {
+  opacity: 1;
+  transition: opacity 500ms ease-in;
+}
+
+.example-leave {
+  opacity: 1;
+}
+
+.example-leave.example-leave-active {
+  opacity: 0.01;
+  transition: opacity 300ms ease-in;
+}
+
+.switch-wrapper {
+  position: relative;
+}
+
+.switch-wrapper > div {
+  position: absolute;
+}

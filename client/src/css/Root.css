@@ -1,0 +1,84 @@
+.image  {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 70px;
+  max-width:auto;
+  width: 50%;
+}
+
+.center-button  {
+  display: flex;
+  justify-content: center;
+}
+
+.bubble-utton{
+  display:flex;
+  justify-content: center;
+}
+
+.bubbleText{
+  display:flex;
+  font-size: 42px;
+  justify-content:center;
+  text-anchor: middle;
+  fill: #fff;
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+.SVG{
+    z-index: 2;
+    filter: drop-shadow(0 0 40px rgba(0, 0, 0, 0.3));
+
+}
+
+.path {
+        cursor: pointer;
+        transform-origin: 50% 50%;
+    }
+
+.path:hover{
+  fill: var(--pink);
+  animation: blob 3s infinite forwards;
+  cursor: pointer;
+}
+
+.center {
+  width: 100px;
+  height: 100px;
+
+}
+
+/* Create three equal columns that floats next to each other */
+.column {
+
+  text-align: center;
+  width: 28%;
+
+  padding: 20px;
+  height: 100px; /* Should be removed. Only for demonstration */
+}
+
+/* Clear floats after the columns */
+.row {
+  width: 100vw;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  clear: both;
+}
+
+.space {
+  height: 17px;
+}
+
+
+/* Responsive layout - makes the three columns stack on top of each other instead of next to each other */
+@media screen and (max-width: 800px) {
+  .column {
+    width: 100%;
+    height: 100px;
+    margin-bottom: 300px;
+  }
+}
