@@ -158,20 +158,20 @@ class Dashboard extends React.Component {
           onClick={this.mapOnClick}
           zoom={6}
           center={this.state.center}
-          defaultOptions={{
-            disableDefaultUI: true, // disable default map UI
-            zoomControl: true,
-            zoomControlOptions: {
-              position: google.maps.ControlPosition.LEFT_BOTTOM
-            },
-            scaleControl: true,
-            fullscreenControl: false,
-            fullscreenControlOptions: {
-              position: google.maps.ControlPosition.LEFT_BOTTOM
-            },
-            minZoom: 2,
-            maxZoom: 12,
-          }}
+          // defaultOptions={{
+          //   disableDefaultUI: true, // disable default map UI
+          //   zoomControl: true,
+          //   zoomControlOptions: {
+          //     position: google.maps.ControlPosition.LEFT_BOTTOM
+          //   },
+          //   scaleControl: true,
+          //   fullscreenControl: false,
+          //   fullscreenControlOptions: {
+          //     position: google.maps.ControlPosition.LEFT_BOTTOM
+          //   },
+          //   minZoom: 2,
+          //   maxZoom: 12,
+          // }}
           ref={(ref) => {
             this.mapRef = ref;
           }}
@@ -194,7 +194,7 @@ class Dashboard extends React.Component {
               width: "35%",
               height: "45px",
               position: `absolute`,
-              top: "50px",
+              top: "70px",
               borderRadius: "10px",
               border: "none",
               marginLeft: "1em",
