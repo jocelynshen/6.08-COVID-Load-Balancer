@@ -4,18 +4,7 @@
 #include <SPI.h>
 
 #include <OneWire.h>
-
-// Define deep sleep options
-uint64_t uS_TO_S_FACTOR = 1000000;  // Conversion factor for micro seconds to seconds
-// Sleep for 10 minutes = 600 seconds
-uint64_t TIME_TO_SLEEP = 600;
-
-
-// Define CS pin for the SD card module
-#define SD_CS 5
-
-// Save reading number on RTC memory
-//RTC_DATA_ATTR int readingID = 0;
+#define SD_CS 5 //can be changed
 
 char dataMessage[100] = "Hi dingus";
 
@@ -27,8 +16,6 @@ OneWire oneWire(ONE_WIRE_BUS);
 void setup() {
   // Start serial communication for debugging purposes
   Serial.begin(115200);
-
-
   // Initialize SD card
   SD.begin(SD_CS);
   if (!SD.begin(SD_CS)) {
@@ -52,15 +39,31 @@ void setup() {
   if (!file) {
     Serial.println("File doens't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Date, Hour, Temperature \r\n");
+    writeFile(SD, "/data.txt", dataMessage);
   }
   else {
     Serial.println("File already exists");
   }
   file.close();
 }
-
-void loop() {
+int count = 0;
+//char val[200] = "\0";
+void loop() {    
+  if(count<=50){
+    sprintf(dataMessage, "sorry not sorry %i\n", count);
+    appendFile(SD, "/data.txt", dataMessage);
+    count++;
+    }
+  else{
+    File root = SD.open("/data.txt");
+    if (root) {    
+    /* read from the file until there's nothing else in it */
+    while (root.available()) {
+      /* read the file and print to Terminal */
+       const char* val= root.readStringUntil('\n').c_str();
+      Serial.println(val);
+    }}
+    root.close();}
 
 }
 
