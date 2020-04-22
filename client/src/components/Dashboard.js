@@ -17,13 +17,17 @@ class Dashboard extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      center: { lat: 39.0911, lng: -94.4155 }
+      center: { lat: 39.0911, lng: -94.4155 },
+      zoom: 6,
+      data: []
     }
     this.mapRef = React.createRef((ref) => {this.mapRef = ref;});
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng) {
+    console.log("next props", nextProps);
+    console.log("next state", nextState);
+      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data) {
         return true
       } else {
         return false
@@ -32,7 +36,12 @@ class Dashboard extends React.Component {
 
   componentDidMount() {
     document.title = "Dashboard";
-    this.handleGeolocationNoSSL();
+    //this.handleGeolocationNoSSL();
+    fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
+        .then(response => response.json())
+        .then(data => {
+          this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]  }})})
+        });
   }
 
   handleLocationNoPermission = () => {
@@ -95,11 +104,12 @@ class Dashboard extends React.Component {
   }
 
   onPlaceSelected = place => {
+    console.log("PLACE", place);
     const latValue = place.geometry.location.lat(),
       lngValue = place.geometry.location.lng();
       this.nextLat = latValue;
       this.nextLng = lngValue;
-      this.setState({ formattedPlaceAddress: place.formatted_address, center: {lat: latValue, lng: lngValue}})
+    this.setState({ formattedPlaceAddress: place.formatted_address});
     this.mapRef.panTo(
         new window.google.maps.LatLng(latValue, lngValue)
       );
@@ -109,36 +119,17 @@ class Dashboard extends React.Component {
     let newLat = pos.latLng.lat(),newLng = pos.latLng.lng();
     this.nextLat = newLat;
     this.nextLng = newLng;
-    this.setState({center: {lat: newLat, lng: newLng}});
+    // this.setState({center: {lat: newLat, lng: newLng}});
     this.mapRef.panTo(
       new window.google.maps.LatLng(newLat, newLng)
     )
   };
 
   onIdle = () => {
-    if (this.nextLat && this.nextLng) {
-      this.setState({zoom: this.mapRef.getZoom(), mapPostion: {lat: this.nextLat, lng: this.nextLng}})
-      Geocode.fromLatLng(this.nextLat, this.nextLng).then(
-        response => {
-          const address = response.results[0].formatted_address,
-            geoAddressArray = response.results[0].address_components;
-          if(getCountry(geoAddressArray).length > 0) {
-            this.setState({
-              address: address ? address : "",
-              mapPosition: {
-                lat: this.nextLat,
-                lng: this.nextLng
-              },
-              addressArray: geoAddressArray,
-            });
-            this.nextLat = undefined;
-            this.nextLng = undefined;
-          }
-        },
-        error => {
-          console.error(error);
-        }
-      );
+    if (this.nextLat != undefined && this.nextLng != undefined) {
+      this.setState({zoom: this.mapRef.getZoom(), center: {lat: this.nextLat, lng: this.nextLng}});
+      this.nextLat = undefined;
+      this.nextLng = undefined;
     }
   }
 
@@ -153,22 +144,15 @@ class Dashboard extends React.Component {
             libraries: 'visualization',
           }}
           onClick={this.mapOnClick}
-          zoom={6}
+          styles = {[{
+              featureType: 'poi.business',
+              elementType: 'labels',
+              stylers: [{
+                  visibility: 'on'
+              }]
+          }]}
+          zoom={this.state.zoom}
           center={this.state.center}
-          // defaultOptions={{
-          //   disableDefaultUI: true, // disable default map UI
-          //   zoomControl: true,
-          //   zoomControlOptions: {
-          //     position: google.maps.ControlPosition.LEFT_BOTTOM
-          //   },
-          //   scaleControl: true,
-          //   fullscreenControl: false,
-          //   fullscreenControlOptions: {
-          //     position: google.maps.ControlPosition.LEFT_BOTTOM
-          //   },
-          //   minZoom: 2,
-          //   maxZoom: 12,
-          // }}
           ref={(ref) => {
             this.mapRef = ref;
           }}
@@ -176,15 +160,7 @@ class Dashboard extends React.Component {
         >
           <Marker
             google={window.google} position={this.state.center} icon={marker}/>
-          <Circle
-                defaultCenter={this.state.center}
-                radius={this.state.value*1000}
-                options= {{
-                  strokeColor: "#fff",
-                  fillColor: "#B1E0FD",
-                  strokeWeight: "1"
-                }}
-              />
+
         <HeatmapLayer
           data={this.getData()}
           options={{radius: 20}}
@@ -205,7 +181,7 @@ class Dashboard extends React.Component {
               fontFamily: "Josefin Sans"
             }}
             onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
-            types={["(regions)"]}
+            types={["geocode"]}
             placeholder={this.state.formattedPlaceAddress ? this.state.formattedPlaceAddress : "Enter a location"}
           />
         </GoogleMap>
@@ -234,7 +210,7 @@ class Dashboard extends React.Component {
     );
   }
   getData = () => {
-    return [{location: new window.google.maps.LatLng(39.0911,-94.4155), weight: 0.5}]
+    return this.state.data;
     // return [new window.google.maps.LatLng(39.0911,-94.4155)]
   }
 }
