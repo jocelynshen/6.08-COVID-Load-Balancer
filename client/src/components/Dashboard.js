@@ -22,7 +22,9 @@ class Dashboard extends React.Component {
     this.state = {
       center: { lat: 39.0911, lng: -94.4155 },
       zoom: 6,
-      data: []
+      data: [],
+      markers: [],
+      bounds: null
     }
     this.mapRef = React.createRef((ref) => {this.mapRef = ref;});
   }
@@ -30,7 +32,8 @@ class Dashboard extends React.Component {
   shouldComponentUpdate(nextProps, nextState) {
     console.log("next props", nextProps);
     console.log("next state", nextState);
-      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data) {
+      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data
+        || this.state.markers != nextState.markers) {
         return true
       } else {
         return false
@@ -113,7 +116,7 @@ class Dashboard extends React.Component {
       this.nextLat = latValue;
       this.nextLng = lngValue;
     this.setState({ formattedPlaceAddress: place.formatted_address});
-    this.state.mapRef.panTo(
+    this.mapRef.panTo(
         new window.google.maps.LatLng(latValue, lngValue)
       );
   };
@@ -122,21 +125,58 @@ class Dashboard extends React.Component {
     let newLat = pos.latLng.lat(),newLng = pos.latLng.lng();
     this.nextLat = newLat;
     this.nextLng = newLng;
-    // this.setState({center: {lat: newLat, lng: newLng}});
-    this.state.mapRef.panTo(
+    this.mapRef.panTo(
       new window.google.maps.LatLng(newLat, newLng)
     )
   };
 
   onIdle = () => {
     if (this.nextLat != undefined && this.nextLng != undefined) {
-      this.setState({zoom: this.state.mapRef.getZoom(), center: {lat: this.nextLat, lng: this.nextLng}});
+      this.setState({zoom: this.mapRef.getZoom(), center: {lat: this.nextLat, lng: this.nextLng}});
       this.nextLat = undefined;
       this.nextLng = undefined;
     }
   }
 
+  // onBoundsChanged = () => {
+  //   console.log("BOUNDS CHANGED", this.mapRef.getBounds());
+  //   this.setState({
+  //     bounds: this.mapRef.getBounds(),
+  //     // center: this.mapRef.getCenter(),
+  //   })
+  // }
+  //
+  // onSearchBoxMounted = ref => {
+  //   console.log("SEARCH BOX MOUNTED", ref);
+  //   this.searchBox = ref;
+  // }
+  //
+  // onPlacesChanged = () => {
+  //   console.log("ON PLACES CHANGED", this.searchBox.getPlaces())
+  //   const places = this.searchBox.getPlaces();
+  //   const bounds = new window.google.maps.LatLngBounds();
+  //
+  //   places.forEach(place => {
+  //     if (place.geometry.viewport) {
+  //       bounds.union(place.geometry.viewport)
+  //     } else {
+  //       bounds.extend(place.geometry.location)
+  //     }
+  //   });
+  //   const nextMarkers = places.map(place => ({
+  //     position: place.geometry.location,
+  //   }));
+  //   const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
+  //
+  //   this.setState({
+  //     // center: nextCenter,
+  //     markers: nextMarkers,
+  //   });
+  //   // this.mapRef.fitBounds(bounds);
+  // }
+
   render() {
+    console.log("CURRENT MARKERS", this.state.markers)
     const AsyncMap = compose(
   lifecycle({
     componentWillMount() {
@@ -144,10 +184,11 @@ class Dashboard extends React.Component {
 
       this.setState({
         bounds: null,
+        center: {
+          lat: 41.9, lng: -87.624
+        },
         markers: [],
         onMapMounted: ref => {
-          this.setState({mapRef: ref});
-          console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", this.state);
           refs.map = ref;
         },
         onBoundsChanged: () => {
@@ -185,12 +226,10 @@ class Dashboard extends React.Component {
     },
   }),
   withScriptjs,
-  withGoogleMap
-)(props =>
+  withGoogleMap)(props =>
   <GoogleMap
-    ref={props.onMapMounted}
-    // ref = {(ref) => this.mapRef = ref;}
-    defaultZoom={15}
+    // ref={props.onMapMounted}
+    ref = {(ref) => {this.mapRef = ref; props.onMapMounted(ref)}}
     center={this.state.center}
     onBoundsChanged={props.onBoundsChanged}
     google={window.google}
@@ -232,7 +271,7 @@ class Dashboard extends React.Component {
         fontSize: "15px",
         fontFamily: "Josefin Sans"
       }}
-      onPlaceSelected={(place) => {props.onPlaceSelected(place)}}
+      onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
       types={["geocode"]}
       placeholder={this.state.formattedPlaceAddress ? this.state.formattedPlaceAddress : "Enter a location"}
     />
@@ -240,7 +279,7 @@ class Dashboard extends React.Component {
     <SearchBox
       ref={props.onSearchBoxMounted}
       bounds={props.bounds}
-      controlPosition={google.maps.ControlPosition.TOP_LEFT}
+      controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
       onPlacesChanged={props.onPlacesChanged}
     >
       <input
