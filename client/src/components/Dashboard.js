@@ -30,8 +30,8 @@ class Dashboard extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    console.log("next props", nextProps);
-    console.log("next state", nextState);
+    // console.log("next props", nextProps);
+    // console.log("next state", nextState);
       if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data
         || this.state.markers != nextState.markers) {
         return true
@@ -42,35 +42,12 @@ class Dashboard extends React.Component {
 
   componentDidMount() {
     document.title = "Dashboard";
-    //this.handleGeolocationNoSSL();
+    this.handleGeolocationNoSSL();
     fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
         .then(response => response.json())
         .then(data => {
           this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]  }})})
         });
-  }
-
-  handleLocationNoPermission = () => {
-    let lat = this.state.mapPosition.lat;
-    let lng = this.state.mapPosition.lng;
-    Geocode.fromLatLng(lat, lng).then(
-      response => {
-        const address = response.results[0].formatted_address,geoAddressArray = response.results[0].address_components;
-        this.setState({
-          address: address ? address : "",
-          mapPosition: {lat: lat,lng: lng},
-          addressArray: geoAddressArray,
-          askForLocation: false,
-        });
-        if (this.state.userLocationAddressArray.length === 0){
-          this.setState({userLocationAddressArray: geoAddressArray})
-        }
-
-      },
-      error => {
-        console.error(error);
-      }
-    );
   }
 
   handleGeolocationNoSSL = () => {
@@ -84,12 +61,11 @@ class Dashboard extends React.Component {
                 geoAddressArray = response.results[0].address_components;
               this.setState({
                 address: address ? address : "",
-                mapPosition: {
+                center: {
                   lat: lat,
                   lng: lng
                 },
                 addressArray: geoAddressArray,
-                askForLocation: false,
               });
               this.setState({userLocationAddressArray: geoAddressArray});
             },
@@ -138,100 +114,53 @@ class Dashboard extends React.Component {
     }
   }
 
-  // onBoundsChanged = () => {
-  //   console.log("BOUNDS CHANGED", this.mapRef.getBounds());
-  //   this.setState({
-  //     bounds: this.mapRef.getBounds(),
-  //     // center: this.mapRef.getCenter(),
-  //   })
-  // }
-  //
-  // onSearchBoxMounted = ref => {
-  //   console.log("SEARCH BOX MOUNTED", ref);
-  //   this.searchBox = ref;
-  // }
-  //
-  // onPlacesChanged = () => {
-  //   console.log("ON PLACES CHANGED", this.searchBox.getPlaces())
-  //   const places = this.searchBox.getPlaces();
-  //   const bounds = new window.google.maps.LatLngBounds();
-  //
-  //   places.forEach(place => {
-  //     if (place.geometry.viewport) {
-  //       bounds.union(place.geometry.viewport)
-  //     } else {
-  //       bounds.extend(place.geometry.location)
-  //     }
-  //   });
-  //   const nextMarkers = places.map(place => ({
-  //     position: place.geometry.location,
-  //   }));
-  //   const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
-  //
-  //   this.setState({
-  //     // center: nextCenter,
-  //     markers: nextMarkers,
-  //   });
-  //   // this.mapRef.fitBounds(bounds);
-  // }
+  onBoundsChanged = () => {
+    console.log("BOUNDS CHANGED", this.mapRef.getBounds());
+    this.setState({
+      bounds: this.mapRef.getBounds(),
+      // center: this.mapRef.getCenter(),
+    })
+  }
+
+  onSearchBoxMounted = ref => {
+    console.log("SEARCH BOX MOUNTED", ref);
+    this.searchBox = ref;
+  }
+
+  onPlacesChanged = () => {
+    console.log("ON PLACES CHANGED", this.searchBox.getPlaces())
+    const places = this.searchBox.getPlaces();
+    const bounds = new window.google.maps.LatLngBounds();
+
+    places.forEach(place => {
+      if (place.geometry.viewport) {
+        bounds.union(place.geometry.viewport)
+      } else {
+        bounds.extend(place.geometry.location)
+      }
+    });
+    const nextMarkers = places.map(place => ({
+      position: place.geometry.location,
+    }));
+    const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
+
+    this.setState({
+      center: nextCenter,
+      markers: nextMarkers,
+      zoom: this.mapRef.getZoom()
+    });
+    // this.mapRef.fitBounds(bounds);
+  }
 
   render() {
     console.log("CURRENT MARKERS", this.state.markers)
-    const AsyncMap = compose(
-  lifecycle({
-    componentWillMount() {
-      const refs = {}
-
-      this.setState({
-        bounds: null,
-        center: {
-          lat: 41.9, lng: -87.624
-        },
-        markers: [],
-        onMapMounted: ref => {
-          refs.map = ref;
-        },
-        onBoundsChanged: () => {
-          this.setState({
-            bounds: refs.map.getBounds(),
-            center: refs.map.getCenter(),
-          })
-        },
-        onSearchBoxMounted: ref => {
-          refs.searchBox = ref;
-        },
-        onPlacesChanged: () => {
-          const places = refs.searchBox.getPlaces();
-          const bounds = new google.maps.LatLngBounds();
-
-          places.forEach(place => {
-            if (place.geometry.viewport) {
-              bounds.union(place.geometry.viewport)
-            } else {
-              bounds.extend(place.geometry.location)
-            }
-          });
-          const nextMarkers = places.map(place => ({
-            position: place.geometry.location,
-          }));
-          const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
-
-          this.setState({
-            center: nextCenter,
-            markers: nextMarkers,
-          });
-          // refs.map.fitBounds(bounds);
-        },
-      })
-    },
-  }),
-  withScriptjs,
-  withGoogleMap)(props =>
+    const AsyncMap =
+  withScriptjs(
+  withGoogleMap(props =>
   <GoogleMap
-    // ref={props.onMapMounted}
-    ref = {(ref) => {this.mapRef = ref; props.onMapMounted(ref)}}
+    ref = {(ref) => {this.mapRef = ref;}}
     center={this.state.center}
-    onBoundsChanged={props.onBoundsChanged}
+    onBoundsChanged={this.onBoundsChanged}
     google={window.google}
         bootstrapURLKeys={{
         libraries: 'visualization',
@@ -277,10 +206,10 @@ class Dashboard extends React.Component {
     />
 
     <SearchBox
-      ref={props.onSearchBoxMounted}
-      bounds={props.bounds}
+      ref={this.onSearchBoxMounted}
+      bounds={this.state.bounds}
       controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
-      onPlacesChanged={props.onPlacesChanged}
+      onPlacesChanged={this.onPlacesChanged}
     >
       <input
         type="text"
@@ -300,11 +229,11 @@ class Dashboard extends React.Component {
         }}
       />
     </SearchBox>
-    {props.markers.map((marker, index) =>
+    {this.state.markers.map((marker, index) =>
       <Marker key={index} position={marker.position} />
     )}
   </GoogleMap>
-);
+));
 
     return (
       <>
