@@ -168,12 +168,12 @@ class Dashboard extends React.Component {
 
       this.setState({
         bounds: null,
-        zoom: 11,
+        zoom: 13,
         markers: [],
         onMapMounted: (ref) => {
           refs.map = ref;
           // this.setState({
-          //   center: ref.getCenter()
+          //   center: refs.map.getCenter()
           // })
         },
         onBoundsChanged: () => {
@@ -182,6 +182,7 @@ class Dashboard extends React.Component {
             center: refs.map.getCenter(),
           })
         },
+
         onSearchBoxMounted: ref => {
           refs.searchBox = ref;
         },
@@ -243,7 +244,6 @@ class Dashboard extends React.Component {
 )(props =>
   <GoogleMap
     ref={(ref) => {props.onMapMounted(ref)}}
-    defaultZoom={15}
     center={this.state.center}
     onBoundsChanged={props.onBoundsChanged}
     google={window.google}
@@ -282,6 +282,12 @@ class Dashboard extends React.Component {
     />
     <Marker
         google={window.google} position={props.center} icon={marker}/>
+
+    <HeatmapLayer
+      data={this.getData()}
+      options={{radius: 20}}
+    />
+
     <SearchBox
       ref={props.onSearchBoxMounted}
       bounds={props.bounds}
@@ -313,88 +319,88 @@ class Dashboard extends React.Component {
 );
 
 <MapWithASearchBox />
-    const AsyncMap =
-  withScriptjs(
-  withGoogleMap(props =>
-  <GoogleMap
-    ref = {(ref) => {this.mapRef = ref;}}
-    center={this.state.center}
-    onBoundsChanged={this.onBoundsChanged}
-    google={window.google}
-      bootstrapURLKeys={{
-      libraries: 'visualization',
-    }}
-    onClick={this.mapOnClick}
-    styles = {[{
-        featureType: 'poi.business',
-        elementType: 'labels',
-        stylers: [{
-            visibility: 'on'
-        }]
-    }]}
-    zoom={this.state.zoom}
-    onIdle = {this.onIdle}
-  >
-
-  <HeatmapLayer
-    data={this.getData()}
-    options={{radius: 20}}
-  />
-
-  <Marker
-          google={window.google} position={this.state.center} icon={marker}/>
-
-  <Autocomplete
-      style={{
-        width: "35%",
-        height: "45px",
-        position: `absolute`,
-        top: "70px",
-        borderRadius: "10px",
-        border: "none",
-        marginLeft: "1em",
-        paddingLeft: "1em",
-        boxShadow:
-          "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
-        fontSize: "15px",
-        fontFamily: "Josefin Sans"
-      }}
-      onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
-      types={["geocode"]}
-      placeholder={"Enter a location"}
-    />
-
-    <SearchBox
-      ref={this.onSearchBoxMounted}
-      bounds={this.state.bounds}
-      controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
-      onPlacesChanged={this.onPlacesChanged}
-    >
-      <input
-        type="text"
-        placeholder="Where do you want to go?"
-        style={{
-          boxSizing: `border-box`,
-          border: `1px solid transparent`,
-          width: `240px`,
-          height: `45px`,
-          borderRadius: "10px",
-          marginLeft: "-200px",
-          paddingLeft: "1em",
-          marginTop: `120px`,
-          boxShadow:
-            "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
-          fontSize: "15px",
-          fontFamily: "Josefin Sans",
-          textOverflow: `ellipses`,
+  const AsyncMap =
+      withScriptjs(
+      withGoogleMap(props =>
+      <GoogleMap
+        ref = {(ref) => {this.mapRef = ref;}}
+        center={this.state.center}
+        onBoundsChanged={this.onBoundsChanged}
+        google={window.google}
+          bootstrapURLKeys={{
+          libraries: 'visualization',
         }}
+        onClick={this.mapOnClick}
+        styles = {[{
+            featureType: 'poi.business',
+            elementType: 'labels',
+            stylers: [{
+                visibility: 'on'
+            }]
+        }]}
+        zoom={this.state.zoom}
+        onIdle = {this.onIdle}
+      >
+
+      <HeatmapLayer
+        data={this.getData()}
+        options={{radius: 20}}
       />
-    </SearchBox>
-    {this.state.markers.map((marker, index) =>
-      <Marker key={index} position={marker.position} />
-    )}
-  </GoogleMap>
-));
+
+      <Marker
+              google={window.google} position={this.state.center} icon={marker}/>
+
+      <Autocomplete
+          style={{
+            width: "35%",
+            height: "45px",
+            position: `absolute`,
+            top: "70px",
+            borderRadius: "10px",
+            border: "none",
+            marginLeft: "1em",
+            paddingLeft: "1em",
+            boxShadow:
+              "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+            fontSize: "15px",
+            fontFamily: "Josefin Sans"
+          }}
+          onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
+          types={["geocode"]}
+          placeholder={"Enter a location"}
+        />
+
+        <SearchBox
+          ref={this.onSearchBoxMounted}
+          bounds={this.state.bounds}
+          controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
+          onPlacesChanged={this.onPlacesChanged}
+        >
+          <input
+            type="text"
+            placeholder="Where do you want to go?"
+            style={{
+              boxSizing: `border-box`,
+              border: `1px solid transparent`,
+              width: `240px`,
+              height: `45px`,
+              borderRadius: "10px",
+              marginLeft: "-200px",
+              paddingLeft: "1em",
+              marginTop: `120px`,
+              boxShadow:
+                "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+              fontSize: "15px",
+              fontFamily: "Josefin Sans",
+              textOverflow: `ellipses`,
+            }}
+          />
+        </SearchBox>
+        {this.state.markers.map((marker, index) =>
+          <Marker key={index} position={marker.position} />
+        )}
+      </GoogleMap>
+    ));
 
     return (
       <>
