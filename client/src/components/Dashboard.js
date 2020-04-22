@@ -189,6 +189,7 @@ class Dashboard extends React.Component {
         onPlacesChanged: () => {
           const places = refs.searchBox.getPlaces();
           const bounds = new google.maps.LatLngBounds();
+          console.log("nearby places found: ", places);
 
           places.forEach(place => {
             if (place.geometry.viewport) {
