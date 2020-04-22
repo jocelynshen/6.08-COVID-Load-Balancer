@@ -1,4 +1,4 @@
-
+import json
 import sqlite3
 import datetime
 visits_db = '__HOME__/locations.db'
@@ -39,7 +39,8 @@ def request_handler(request):
                         user_data.append(line)
                     conn.commit() # commit commands
                     conn.close() # close connection to database
-                    return user_data
+                    json_output = json.dumps(user_data)
+                    return json_output
                 else:
                     conn.commit() # commit commands
                     conn.close() # close connection to database
@@ -71,7 +72,8 @@ def request_handler(request):
                         user_data.append(line)
                     conn.commit() # commit commands
                     conn.close() # close connection to database
-                    return user_data
+                    json_output = json.dumps(user_data)
+                    return json_output
                 else:
                     conn.commit() # commit commands
                     conn.close() # close connection to database
