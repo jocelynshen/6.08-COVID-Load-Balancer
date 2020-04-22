@@ -21,7 +21,7 @@ class Dashboard extends React.Component {
     super(props);
     this.state = {
       center: { lat: 39.0911, lng: -94.4155 },
-      zoom: 6,
+      zoom: 11,
       data: [],
       markers: [],
       bounds: null
@@ -86,7 +86,7 @@ class Dashboard extends React.Component {
   }
 
   onPlaceSelected = place => {
-    console.log("PLACE", place);
+    // console.log("PLACE", place);
     const latValue = place.geometry.location.lat(),
       lngValue = place.geometry.location.lng();
       this.nextLat = latValue;
@@ -115,7 +115,9 @@ class Dashboard extends React.Component {
   }
 
   onBoundsChanged = () => {
-    console.log("BOUNDS CHANGED", this.mapRef.getBounds());
+    // if (this.searchBox != null) {
+    //   this.searchBox.setBounds(this.mapRef.getBounds());
+    // }
     this.setState({
       bounds: this.mapRef.getBounds(),
       // center: this.mapRef.getCenter(),
@@ -123,13 +125,16 @@ class Dashboard extends React.Component {
   }
 
   onSearchBoxMounted = ref => {
-    console.log("SEARCH BOX MOUNTED", ref);
     this.searchBox = ref;
   }
 
   onPlacesChanged = () => {
-    console.log("ON PLACES CHANGED", this.searchBox.getPlaces())
+    // this.setState({placesChanged: true})
+    // if (this.state.bounds == null) {
+    //   console.log("NULL BOUNDS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    // }
     const places = this.searchBox.getPlaces();
+    // console.log("FOUND PLACES: ", places)
     const bounds = new window.google.maps.LatLngBounds();
 
     places.forEach(place => {
@@ -142,18 +147,19 @@ class Dashboard extends React.Component {
     const nextMarkers = places.map(place => ({
       position: place.geometry.location,
     }));
-    const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
+    // const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
 
     this.setState({
-      center: nextCenter,
+      // center: nextCenter,
       markers: nextMarkers,
-      zoom: this.mapRef.getZoom()
+      zoom: this.mapRef.getZoom(),
+      // placesChanged: false
     });
     // this.mapRef.fitBounds(bounds);
   }
 
   render() {
-    console.log("CURRENT MARKERS", this.state.markers)
+    // console.log("CURRENT MARKERS", this.state.markers)
     const AsyncMap =
   withScriptjs(
   withGoogleMap(props =>
@@ -202,7 +208,7 @@ class Dashboard extends React.Component {
       }}
       onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
       types={["geocode"]}
-      placeholder={this.state.formattedPlaceAddress ? this.state.formattedPlaceAddress : "Enter a location"}
+      placeholder={"Enter a location"}
     />
 
     <SearchBox
@@ -213,18 +219,20 @@ class Dashboard extends React.Component {
     >
       <input
         type="text"
-        placeholder="Customized your placeholder"
+        placeholder="Where do you want to go?"
         style={{
           boxSizing: `border-box`,
           border: `1px solid transparent`,
           width: `240px`,
-          height: `32px`,
-          marginTop: `27px`,
-          padding: `0 12px`,
-          borderRadius: `3px`,
-          boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
-          fontSize: `14px`,
-          outline: `none`,
+          height: `45px`,
+          borderRadius: "10px",
+          marginLeft: "-200px",
+          paddingLeft: "1em",
+          marginTop: `120px`,
+          boxShadow:
+            "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+          fontSize: "15px",
+          fontFamily: "Josefin Sans",
           textOverflow: `ellipses`,
         }}
       />
