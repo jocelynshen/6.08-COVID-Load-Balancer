@@ -225,7 +225,7 @@ void fsm(uint8_t input) {
         char body[200]; //for body;
         if (gps.location.isValid()) {
           Serial.println("obtained good data");
-          sprintf(body, "user=%s&lat=%f&lon=%fconfirmed=%b", USER, gps.location.lat(), gps.location.lng(), confirmed_case); //generate body, posting to User, 1 step
+          sprintf(body, "user=%s&lat=%f&lon=%f&confirmed=%b", USER, gps.location.lat(), gps.location.lng(), confirmed_case); //generate body, posting to User, 1 step
         } else {
           sprintf(body, "user=%s&lat=%f&lon=%f", USER, temp_lat, temp_lon); //generate body, posting to User, 1 step
         }
