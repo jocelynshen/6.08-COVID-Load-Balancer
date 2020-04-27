@@ -58,6 +58,7 @@
     "react-time-ago": "^5.0.7",
     "react-translate": "^7.0.1",
     "reactjs-popup": "^1.5.0",
+    "recompose": "^0.30.0",
     "socket.io": "^2.2.0",
     "socket.io-client": "^2.2.0",
     "url-loader": "^1.1.2"

@@ -5,10 +5,13 @@ import { get, post, getCity, getCountry } from "../utilities";
 import {withGoogleMap,GoogleMap,withScriptjs,Marker, Circle, InfoWindow} from "react-google-maps";
 import Geocode from "react-geocode";
 import Autocomplete from "react-google-autocomplete"
+const { SearchBox } = require("react-google-maps/lib/components/places/SearchBox");
 import { Link } from "react-router-dom";
 import marker from "../public/map-marker.png";
 import HeatmapLayer from "react-google-maps/lib/components/visualization/HeatmapLayer";
 import gpsButton from "../public/crosshairs-gps.png"
+const _ = require("lodash");
+const { compose, withProps, lifecycle } = require("recompose");
 require("dotenv").config();
 Geocode.setApiKey(process.env.REACT_APP_GOOGLE_API);
 Geocode.enableDebug();
@@ -17,13 +20,20 @@ class Dashboard extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      center: { lat: 39.0911, lng: -94.4155 }
+      center: { lat: 39.0911, lng: -94.4155 },
+      zoom: 11,
+      data: [],
+      markers: [],
+      bounds: null
     }
     this.mapRef = React.createRef((ref) => {this.mapRef = ref;});
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng) {
+    // console.log("next props", nextProps);
+    // console.log("next state", nextState);
+      if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data
+        || this.state.markers != nextState.markers) {
         return true
       } else {
         return false
@@ -33,29 +43,11 @@ class Dashboard extends React.Component {
   componentDidMount() {
     document.title = "Dashboard";
     this.handleGeolocationNoSSL();
-  }
-
-  handleLocationNoPermission = () => {
-    let lat = this.state.mapPosition.lat;
-    let lng = this.state.mapPosition.lng;
-    Geocode.fromLatLng(lat, lng).then(
-      response => {
-        const address = response.results[0].formatted_address,geoAddressArray = response.results[0].address_components;
-        this.setState({
-          address: address ? address : "",
-          mapPosition: {lat: lat,lng: lng},
-          addressArray: geoAddressArray,
-          askForLocation: false,
+    fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
+        .then(response => response.json())
+        .then(data => {
+          this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]  }})})
         });
-        if (this.state.userLocationAddressArray.length === 0){
-          this.setState({userLocationAddressArray: geoAddressArray})
-        }
-
-      },
-      error => {
-        console.error(error);
-      }
-    );
   }
 
   handleGeolocationNoSSL = () => {
@@ -69,12 +61,11 @@ class Dashboard extends React.Component {
                 geoAddressArray = response.results[0].address_components;
               this.setState({
                 address: address ? address : "",
-                mapPosition: {
+                center: {
                   lat: lat,
                   lng: lng
                 },
                 addressArray: geoAddressArray,
-                askForLocation: false,
               });
               this.setState({userLocationAddressArray: geoAddressArray});
             },
@@ -95,11 +86,12 @@ class Dashboard extends React.Component {
   }
 
   onPlaceSelected = place => {
+    // console.log("PLACE", place);
     const latValue = place.geometry.location.lat(),
       lngValue = place.geometry.location.lng();
       this.nextLat = latValue;
       this.nextLng = lngValue;
-      this.setState({ formattedPlaceAddress: place.formatted_address, center: {lat: latValue, lng: lngValue}})
+    this.setState({ formattedPlaceAddress: place.formatted_address});
     this.mapRef.panTo(
         new window.google.maps.LatLng(latValue, lngValue)
       );
@@ -109,113 +101,314 @@ class Dashboard extends React.Component {
     let newLat = pos.latLng.lat(),newLng = pos.latLng.lng();
     this.nextLat = newLat;
     this.nextLng = newLng;
-    this.setState({center: {lat: newLat, lng: newLng}});
     this.mapRef.panTo(
       new window.google.maps.LatLng(newLat, newLng)
     )
   };
 
   onIdle = () => {
-    if (this.nextLat && this.nextLng) {
-      this.setState({zoom: this.mapRef.getZoom(), mapPostion: {lat: this.nextLat, lng: this.nextLng}})
-      Geocode.fromLatLng(this.nextLat, this.nextLng).then(
-        response => {
-          const address = response.results[0].formatted_address,
-            geoAddressArray = response.results[0].address_components;
-          if(getCountry(geoAddressArray).length > 0) {
-            this.setState({
-              address: address ? address : "",
-              mapPosition: {
-                lat: this.nextLat,
-                lng: this.nextLng
-              },
-              addressArray: geoAddressArray,
-            });
-            this.nextLat = undefined;
-            this.nextLng = undefined;
-          }
-        },
-        error => {
-          console.error(error);
-        }
-      );
+    if (this.nextLat != undefined && this.nextLng != undefined) {
+      this.setState({zoom: this.mapRef.getZoom(), center: {lat: this.nextLat, lng: this.nextLng}});
+      this.nextLat = undefined;
+      this.nextLng = undefined;
     }
   }
 
+  onBoundsChanged = () => {
+    // if (this.searchBox != null) {
+    //   this.searchBox.setBounds(this.mapRef.getBounds());
+    // }
+    this.setState({
+      bounds: this.mapRef.getBounds(),
+      // center: this.mapRef.getCenter(),
+    })
+  }
+
+  onSearchBoxMounted = ref => {
+    this.searchBox = ref;
+  }
+
+  onPlacesChanged = () => {
+    // this.setState({placesChanged: true})
+    // if (this.state.bounds == null) {
+    //   console.log("NULL BOUNDS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    // }
+    const places = this.searchBox.getPlaces();
+    // console.log("FOUND PLACES: ", places)
+    const bounds = new window.google.maps.LatLngBounds();
+
+    places.forEach(place => {
+      if (place.geometry.viewport) {
+        bounds.union(place.geometry.viewport)
+      } else {
+        bounds.extend(place.geometry.location)
+      }
+    });
+    const nextMarkers = places.map(place => ({
+      position: place.geometry.location,
+    }));
+    // const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
+
+    this.setState({
+      // center: nextCenter,
+      markers: nextMarkers,
+      zoom: this.mapRef.getZoom(),
+      // placesChanged: false
+    });
+    // this.mapRef.fitBounds(bounds);
+  }
+
   render() {
-    const AsyncMap =
+    // console.log("CURRENT MARKERS", this.state.markers)
+
+    const MapWithASearchBox = compose(
+  lifecycle({
+    componentWillMount() {
+      const refs = {}
+
+      this.setState({
+        bounds: null,
+        zoom: 13,
+        markers: [],
+        onMapMounted: (ref) => {
+          refs.map = ref;
+          // this.setState({
+          //   center: refs.map.getCenter()
+          // })
+        },
+        onBoundsChanged: () => {
+          this.setState({
+            bounds: refs.map.getBounds(),
+            center: refs.map.getCenter(),
+          })
+        },
+
+        onSearchBoxMounted: ref => {
+          refs.searchBox = ref;
+        },
+        onPlacesChanged: () => {
+          const places = refs.searchBox.getPlaces();
+          const bounds = new google.maps.LatLngBounds();
+          console.log("nearby places found: ", places);
+
+          places.forEach(place => {
+            if (place.geometry.viewport) {
+              bounds.union(place.geometry.viewport)
+            } else {
+              bounds.extend(place.geometry.location)
+            }
+          });
+          const nextMarkers = places.map(place => ({
+            position: place.geometry.location,
+          }));
+          const nextCenter = _.get(nextMarkers, '0.position', this.state.center);
+
+          this.setState({
+            center: nextCenter,
+            markers: nextMarkers,
+          });
+          // refs.map.fitBounds(bounds);
+        },
+        onPlaceSelected: place => {
+          // console.log("PLACE", place);
+          const latValue = place.geometry.location.lat(),
+            lngValue = place.geometry.location.lng();
+            this.nextLat = latValue;
+            this.nextLng = lngValue;
+          this.setState({ formattedPlaceAddress: place.formatted_address});
+          refs.map.panTo(
+              new window.google.maps.LatLng(latValue, lngValue)
+            );
+        },
+
+        mapOnClick: (pos) => {
+          let newLat = pos.latLng.lat(),newLng = pos.latLng.lng();
+          this.nextLat = newLat;
+          this.nextLng = newLng;
+          refs.map.panTo(
+            new window.google.maps.LatLng(newLat, newLng)
+          )
+        },
+
+        onIdle: () => {
+          if (this.nextLat != undefined && this.nextLng != undefined) {
+            this.setState({zoom: refs.map.getZoom(), center: {lat: this.nextLat, lng: this.nextLng}});
+            this.nextLat = undefined;
+            this.nextLng = undefined;
+          }
+        }
+      })
+    },
+  }),
+  withScriptjs,
+  withGoogleMap
+)(props =>
+  <GoogleMap
+    ref={(ref) => {props.onMapMounted(ref)}}
+    center={this.state.center}
+    onBoundsChanged={props.onBoundsChanged}
+    google={window.google}
+      bootstrapURLKeys={{
+      libraries: 'visualization',
+    }}
+    onClick={props.mapOnClick}
+    styles = {[{
+        featureType: 'poi.business',
+        elementType: 'labels',
+        stylers: [{
+            visibility: 'on'
+        }]
+    }]}
+    zoom={props.zoom}
+    onIdle = {props.onIdle}
+  >
+  <Autocomplete
+      style={{
+        width: "35%",
+        height: "45px",
+        position: `absolute`,
+        top: "70px",
+        borderRadius: "10px",
+        border: "none",
+        marginLeft: "1em",
+        paddingLeft: "1em",
+        boxShadow:
+          "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+        fontSize: "15px",
+        fontFamily: "Josefin Sans"
+      }}
+      onPlaceSelected={(place) => {props.onPlaceSelected(place)}}
+      types={["geocode"]}
+      placeholder={"Enter a location"}
+    />
+    <Marker
+        google={window.google} position={props.center} icon={marker}/>
+
+    <HeatmapLayer
+      data={this.getData()}
+      options={{radius: 20}}
+    />
+
+    <SearchBox
+      ref={props.onSearchBoxMounted}
+      bounds={props.bounds}
+      controlPosition={google.maps.ControlPosition.TOP_LEFT}
+      onPlacesChanged={props.onPlacesChanged}
+    >
+      <input
+        type="text"
+        placeholder="Where do you want to go?"
+        style={{
+          boxSizing: `border-box`,
+          border: `1px solid transparent`,
+          width: `240px`,
+          height: `45px`,
+          borderRadius: "10px",
+          marginLeft: "-200px",
+          paddingLeft: "1em",
+          marginTop: `120px`,
+          boxShadow:
+            "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+          fontSize: "15px",
+          fontFamily: "Josefin Sans",
+          textOverflow: `ellipses`,
+        }}
+      />
+    </SearchBox>
+    {props.markers.map((marker, index) =>
+      <Marker key={index} position={marker.position} />
+    )}
+  </GoogleMap>
+);
+
+<MapWithASearchBox />
+  const AsyncMap =
       withScriptjs(
-      withGoogleMap
-    (props => (
-        <GoogleMap
-          google={window.google}
-            bootstrapURLKeys={{
-            libraries: 'visualization',
+      withGoogleMap(props =>
+      <GoogleMap
+        ref = {(ref) => {this.mapRef = ref;}}
+        center={this.state.center}
+        onBoundsChanged={this.onBoundsChanged}
+        google={window.google}
+          bootstrapURLKeys={{
+          libraries: 'visualization',
+        }}
+        onClick={this.mapOnClick}
+        styles = {[{
+            featureType: 'poi.business',
+            elementType: 'labels',
+            stylers: [{
+                visibility: 'on'
+            }]
+        }]}
+        zoom={this.state.zoom}
+        onIdle = {this.onIdle}
+      >
+
+      <HeatmapLayer
+        data={this.getData()}
+        options={{radius: 20}}
+      />
+
+      <Marker
+              google={window.google} position={this.state.center} icon={marker}/>
+
+      <Autocomplete
+          style={{
+            width: "35%",
+            height: "45px",
+            position: `absolute`,
+            top: "70px",
+            borderRadius: "10px",
+            border: "none",
+            marginLeft: "1em",
+            paddingLeft: "1em",
+            boxShadow:
+              "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
+            fontSize: "15px",
+            fontFamily: "Josefin Sans"
           }}
-          onClick={this.mapOnClick}
-          zoom={6}
-          center={this.state.center}
-          // defaultOptions={{
-          //   disableDefaultUI: true, // disable default map UI
-          //   zoomControl: true,
-          //   zoomControlOptions: {
-          //     position: google.maps.ControlPosition.LEFT_BOTTOM
-          //   },
-          //   scaleControl: true,
-          //   fullscreenControl: false,
-          //   fullscreenControlOptions: {
-          //     position: google.maps.ControlPosition.LEFT_BOTTOM
-          //   },
-          //   minZoom: 2,
-          //   maxZoom: 12,
-          // }}
-          ref={(ref) => {
-            this.mapRef = ref;
-          }}
-          onIdle = {this.onIdle}
-        >
-          <Marker
-            google={window.google} position={this.state.center} icon={marker}/>
-          <Circle
-                defaultCenter={this.state.center}
-                radius={this.state.value*1000}
-                options= {{
-                  strokeColor: "#fff",
-                  fillColor: "#B1E0FD",
-                  strokeWeight: "1"
-                }}
-              />
-        <HeatmapLayer
-          data={this.getData()}
-          options={{radius: 20}}
+          onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
+          types={["geocode"]}
+          placeholder={"Enter a location"}
         />
-          <Autocomplete
+
+        <SearchBox
+          ref={this.onSearchBoxMounted}
+          bounds={this.state.bounds}
+          controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
+          onPlacesChanged={this.onPlacesChanged}
+        >
+          <input
+            type="text"
+            placeholder="Where do you want to go?"
             style={{
-              width: "35%",
-              height: "45px",
-              position: `absolute`,
-              top: "70px",
+              boxSizing: `border-box`,
+              border: `1px solid transparent`,
+              width: `240px`,
+              height: `45px`,
               borderRadius: "10px",
-              border: "none",
-              marginLeft: "1em",
+              marginLeft: "-200px",
               paddingLeft: "1em",
+              marginTop: `120px`,
               boxShadow:
                 "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
               fontSize: "15px",
-              fontFamily: "Josefin Sans"
+              fontFamily: "Josefin Sans",
+              textOverflow: `ellipses`,
             }}
-            onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
-            types={["(regions)"]}
-            placeholder={this.state.formattedPlaceAddress ? this.state.formattedPlaceAddress : "Enter a location"}
           />
-        </GoogleMap>
-      ))
-    );
+        </SearchBox>
+        {this.state.markers.map((marker, index) =>
+          <Marker key={index} position={marker.position} />
+        )}
+      </GoogleMap>
+    ));
 
     return (
       <>
-        <AsyncMap
-          googleMapURL={"https://maps.googleapis.com/maps/api/js?key=" + process.env.REACT_APP_GOOGLE_API + "&libraries=places,visualization"}
+        <MapWithASearchBox
+          googleMapURL={"https://maps.googleapis.com/maps/api/js?key=" + process.env.REACT_APP_GOOGLE_API + "&libraries=places,visualization,geometry,drawing"}
           loadingElement={<div style={{ height: `100%` }} />}
           containerElement={<div style={{ height: "100vh", width: `100%`, position: `relative` }}/>}
           mapElement={<div style={{ height: `100%`, width: `100%`, position: `relative` }}/>}
@@ -234,7 +427,7 @@ class Dashboard extends React.Component {
     );
   }
   getData = () => {
-    return [{location: new window.google.maps.LatLng(39.0911,-94.4155), weight: 0.5}]
+    return this.state.data;
     // return [new window.google.maps.LatLng(39.0911,-94.4155)]
   }
 }
