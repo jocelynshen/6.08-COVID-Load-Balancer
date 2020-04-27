@@ -4,7 +4,7 @@
 #include <SPI.h>
 
 #include <OneWire.h>
-#define SD_CS 5 //can be changed
+#define SD_CS 26 //can be changed
 
 char dataMessage[100] = "Hi dingus";
 
