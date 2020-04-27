@@ -5,15 +5,18 @@
 #include <string.h>  //used for some string handling and processing.
 
 #define PRIVATE 0
-#define PRESSED_TOPUBLIC 1
-#define PUBLIC 2 
-#define PRESSED_TOPRIVATE 3
+#define PRESS_PRIV 1
+#define UNPRESS_PRIV 2 
+#define PUBLIC 3
+#define PRESS_PUB 4
+#define UNPRESS_PUB 5
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke library, pins defined in User_Setup.h
 
 char network[] = "rock3";  
 char password[] = "aamd1234"; 
 
+const int BUTTON_TIMEOUT = 1000; //button timeout in milliseconds
 const uint8_t LOOP_PERIOD = 10; //milliseconds
 const uint32_t GET_GPS_CYCLE = 1000 * 60;
 uint32_t primary_timer = 0;
@@ -45,7 +48,7 @@ void setup() {
   Serial.begin(115200);
   gps_serial.begin(9600, SERIAL_8N1, 32, 33);
   tft.init();  //init screen
-  tft.setRotation(2); //adjust rotation
+  tft.setRotation(1); //adjust rotation
   tft.setTextSize(1); //default font size
   tft.fillScreen(TFT_BLACK); //fill background
   tft.setTextColor(TFT_GREEN, TFT_BLACK); //set color of font to green foreground, black background
@@ -78,7 +81,10 @@ void setup() {
   old_val = digitalRead(PIN_1);
   tft.fillScreen(TFT_BLACK); //fill background
   tft.setCursor(0, 0, 1); // set the cursor
-  tft.println("Press button to enter public mode");
+  tft.println("Press button __ times to: \n");
+  tft.println("1: Enter public mode.");
+  tft.println("2: Enter offline mode.");
+  tft.println("3: Alert system that I have a confirmed case of COVID-19.");
 }
 
 void loop() {
@@ -91,27 +97,125 @@ void loop() {
   Serial.println("hey");
 
 }
+int presscount = 0;
+boolean store_data = false;
+boolean confirmed_case = false;
+int msgCursorX;
+int msgCursorY;
 
 void fsm(uint8_t input) {
   switch(state) {
     case PRIVATE: {
       if (input == 0) {
-        state = PRESSED_TOPUBLIC;
+        state = PRESS_PRIV;
+        presscount = 0;
       }
       break; //don't forget break statements
     }
-    case PRESSED_TOPUBLIC: {
+    case PRESS_PRIV: {
       if (input == 1) {
-        state = PUBLIC;
-        timer = millis() - GET_GPS_CYCLE;
+        presscount += 1;
+        timer = millis();
+        state = UNPRESS_PRIV;
       }
+      break;
+    }
+    case UNPRESS_PRIV: {
+      if (millis() - timer < BUTTON_TIMEOUT) {
+        if (input == 0) {
+          state = PRESS_PRIV;
+        }
+      }
+      else if (presscount == 1) {
+        state = PUBLIC;
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter private mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+        timer = millis() - GET_GPS_CYCLE;        
+      } else if (presscount == 2) {
+        state = PRIVATE;
+        store_data = !store_data;
+        
+        // Display notification
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        if (store_data) {
+          tft.println("User has entered offline mode.");
+        } else {
+          tft.println( "User has entered online mode.");
+        }
+        delay(1000 * 2);
+
+        timer = millis() - GET_GPS_CYCLE;
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter public mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+        
+      } else if (presscount == 3) {
+        state = PRIVATE;
+        confirmed_case = !confirmed_case;
+
+        
+        // Display notification
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        if (confirmed_case) {
+          tft.println("User has confirmed COVID-19.");
+        } else {
+          tft.println( "User has recovered from COVID-19.");
+        }
+        delay(1000 * 2);
+
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter public mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+      } else {
+        state = PRIVATE;
+      }
+      tft.println();
+      msgCursorX = tft.getCursorX();
+      msgCursorY = tft.getCursorY();
       break;
     }
     case PUBLIC: {
       Serial.println("hi");
 
       if (input == 0) {
-        state = PRESSED_TOPRIVATE;
+        state = PRESS_PUB;
+        presscount = 0;
       }
       Serial.println(millis() - timer);
       if (millis() - timer >= GET_GPS_CYCLE) {
@@ -121,7 +225,7 @@ void fsm(uint8_t input) {
         char body[200]; //for body;
         if (gps.location.isValid()) {
           Serial.println("obtained good data");
-          sprintf(body, "user=%s&lat=%f&lon=%f", USER, gps.location.lat(), gps.location.lng()); //generate body, posting to User, 1 step
+          sprintf(body, "user=%s&lat=%f&lon=%fconfirmed=%b", USER, gps.location.lat(), gps.location.lng(), confirmed_case); //generate body, posting to User, 1 step
         } else {
           sprintf(body, "user=%s&lat=%f&lon=%f", USER, temp_lat, temp_lon); //generate body, posting to User, 1 step
         }
@@ -135,22 +239,109 @@ void fsm(uint8_t input) {
         strcat(request_buffer, "\r\n"); //header
         Serial.println(request_buffer);
         do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, true);
-        tft.fillScreen(TFT_BLACK); //fill background
-        tft.setCursor(0, 0, 1); // set the cursor
+        tft.setCursor(msgCursorX, msgCursorY);
         tft.println(response_buffer); //print the result
         tft.println();
-        tft.println("Press button to return to private mode");
         timer = millis();
       }
       break;
     }
-    case PRESSED_TOPRIVATE: {
+    case PRESS_PUB: {
       if (input == 1) {
+        presscount += 1;
+        timer = millis();
+        state = UNPRESS_PUB;
+      }
+      break;
+    }
+    case UNPRESS_PUB: {
+      if (millis() - timer < BUTTON_TIMEOUT) {
+        if (input == 0) {
+          state = PRESS_PUB;
+        }
+      }
+      else if (presscount == 1) {
         state = PRIVATE;
         tft.fillScreen(TFT_BLACK); //fill background
         tft.setCursor(0, 0, 1); // set the cursor
-        tft.println("Press button to enter public mode");
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter public mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+      } else if (presscount == 2) {
+        timer = millis();
+        store_data = !store_data;
+
+        // Display notification
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        if (store_data) {
+          tft.println("User has entered offline mode.");
+        } else {
+          tft.println( "User has entered online mode.");
+        }
+        delay(1000 * 2);
+        
+        state = PUBLIC;
+        timer = millis() - GET_GPS_CYCLE;
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter private mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+      } else if (presscount == 3) {
+        state = PUBLIC;
+        timer = millis() - GET_GPS_CYCLE;
+        confirmed_case = !confirmed_case;
+
+        // Display notification
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        if (confirmed_case) {
+          tft.println("User has confirmed COVID-19.");
+        } else {
+          tft.println( "User has recovered from COVID-19.");
+        }
+        delay(1000 * 2);
+        
+        tft.fillScreen(TFT_BLACK); //fill background
+        tft.setCursor(0, 0, 1); // set the cursor
+        tft.println("Press button __ times to: \n");
+        tft.println("1: Enter private mode.");
+        if (store_data) {
+          tft.println("2: Enter online mode.");
+        } else {
+          tft.println("2: Enter offline mode.");
+        }
+        if (confirmed_case) {
+          tft.println("3: Alert system that I no longer have a confirmed case of COVID-19.");
+        } else {
+          tft.println("3: Alert system that I have a confirmed case of COVID-19.");
+        }
+      } else {
+        state = PUBLIC;
+        timer = millis() - GET_GPS_CYCLE;
       }
+      tft.println();
+      msgCursorX = tft.getCursorX();
+      msgCursorY = tft.getCursorY();
       break;
     }
   }
