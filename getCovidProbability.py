@@ -32,18 +32,16 @@ def request_handler(request):
                 conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
                 c = conn.cursor()  # move cursor into database (allows us to execute commands)
                 
-                #one with high probabiliy, 0 probabiliy, low probability
                 covid_Prob_List = []
 
-                R = 6371
-                radius = 1 #km
-                lat_kil = math.degrees(radius/R)
+                R = 6371 #radius of the earth
+                lat_kil = math.degrees(1/R) #1km in latitude degree (constant)
 
                 i=0
                 while i<len(locations_list)-1:
                     lat = locations_list[i]
                     lon = locations_list[i+1]
-                    lon_kil = math.degrees(radius/R/math.cos(math.radians(lat)))
+                    lon_kil = math.degrees(1/R/math.cos(math.radians(lat))) #1km in longitude degree (changes based on latitude)
 
                     entries = c.execute('''SELECT time FROM locations_table 
                                         WHERE latitude BETWEEN ?-? AND ?+?
@@ -51,7 +49,6 @@ def request_handler(request):
                                         longitude BETWEEN ?-? AND ?+?;''', (lat,lat_kil,lat,lat_kil,lon,lon_kil,lon,lon_kil)).fetchall()
                     i+=2
                     covid_Prob_List.append(average_weight(entries,time_now))
-
                 return covid_Prob_List
             else:
                 return "Not Authorized"  
