@@ -7,10 +7,12 @@ visits_db = '__HOME__/locations.db'
 
 def request_handler(request):
     def average_weight(time_list,time_now):
-        sum = 0
-        for time in time_list:
-            sum+=hl_func(time_now,time[0])
-        return sum/len(time_list)
+        if len(time_list)>0:
+            sum = 0
+            for time in time_list:
+                sum+=hl_func(time_now,time[0])
+            return sum/len(time_list)
+        return 0
 
     def hl_func(time_now,time_entry):
         fmt = '%Y-%m-%d %H:%M:%S.%f'
@@ -36,7 +38,7 @@ def request_handler(request):
                 R = 6371
                 radius = 1 #km
                 lat_kil = math.degrees(radius/R)
-                
+
                 i=0
                 while i<len(locations_list)-1:
                     lat = locations_list[i]
