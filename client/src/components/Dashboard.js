@@ -46,8 +46,11 @@ class Dashboard extends React.Component {
     fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
         .then(response => response.json())
         .then(data => {
-          this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]  }})})
+
+          this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]*100  }})})
+          console.log("database results", data)
         });
+
   }
 
   handleGeolocationNoSSL = () => {
@@ -128,6 +131,14 @@ class Dashboard extends React.Component {
     this.searchBox = ref;
   }
 
+  handleTrending = (lat, lng) => {
+    this.nextLat = lat;
+    this.nextLng = lng;
+    this.mapRef.panTo(
+      new window.google.maps.LatLng(lat, lng)
+    )
+  }
+
   onPlacesChanged = () => {
     // this.setState({placesChanged: true})
     // if (this.state.bounds == null) {
@@ -159,12 +170,14 @@ class Dashboard extends React.Component {
   }
 
   render() {
-    // console.log("CURRENT MARKERS", this.state.markers)
+
 
     const MapWithASearchBox = compose(
   lifecycle({
     componentWillMount() {
       const refs = {}
+
+
 
       this.setState({
         bounds: null,
@@ -172,9 +185,6 @@ class Dashboard extends React.Component {
         markers: [],
         onMapMounted: (ref) => {
           refs.map = ref;
-          // this.setState({
-          //   center: refs.map.getCenter()
-          // })
         },
         onBoundsChanged: () => {
           this.setState({
@@ -190,6 +200,9 @@ class Dashboard extends React.Component {
           const places = refs.searchBox.getPlaces();
           const bounds = new google.maps.LatLngBounds();
           console.log("nearby places found: ", places);
+          let formattedPlacesList = places.map((place) => {return {"name": place.name, "lat": place.geometry.location.lat(), "lng": place.geometry.location.lng(), "rating": place.rating, "picture": place.photos, "address": place.formatted_address}})
+          let query = formattedPlacesList.map((place) => {return place["lat"].toString() + "," + place["lng"].toString()});
+          console.log("formatted", formattedPlacesList);
 
           places.forEach(place => {
             if (place.geometry.viewport) {
@@ -207,6 +220,29 @@ class Dashboard extends React.Component {
             center: nextCenter,
             markers: nextMarkers,
           });
+          fetch('http://608dev-2.net/sandbox/sc/team106/getCovidProbability.py?user=admin&password=adminpassword&locations=' + query.join(","))
+              .then(response => response.json())
+              .then(data => {
+                for (let i = 0; i < data.length; i++) {
+                  formattedPlacesList[i]["probability"] = data[i]
+                }
+                formattedPlacesList.sort((a, b) => (a.probability > b.probability) ? 1 : -1);
+                console.log("formatted places", formattedPlacesList);
+
+                let card = formattedPlacesList.map((place, index) => {
+                    return (
+                      <div style={{width: "100%", textAlign: 'left'}}>
+                      <div className="trending-button" onClick={() => refs.map.panTo(new window.google.maps.LatLng(place.lat, place.lng))} style={{display: "inline-block", margin: '1px', height: "auto"}}>
+                      {index+1}. {" "}{place.name}
+                      <div>{"Rating: " + place.rating}</div>
+                      <div>{"Address: " + place.address}</div>
+                      <div>{"Probability: " + place.probability}</div>
+                      </div>
+                      </div>
+                    )
+                  })
+                this.setState({card : card});
+              });
           // refs.map.fitBounds(bounds);
         },
         onPlaceSelected: place => {
@@ -318,92 +354,21 @@ class Dashboard extends React.Component {
     {props.markers.map((marker, index) =>
       <Marker key={index} position={marker.position} />
     )}
+    <div id="right_over_map">
+      <div className="column-right-align">
+        <div className="trending-box">
+          <div className="trending-text">
+            <h3 className="trending-title">Dashboard</h3>
+            <h5>Places least likely to have covid:</h5>
+            {props.card?props.card:""}
+          </div>
+        </div>
+      </div>
+    </div>
   </GoogleMap>
 );
 
 <MapWithASearchBox />
-  const AsyncMap =
-      withScriptjs(
-      withGoogleMap(props =>
-      <GoogleMap
-        ref = {(ref) => {this.mapRef = ref;}}
-        center={this.state.center}
-        onBoundsChanged={this.onBoundsChanged}
-        google={window.google}
-          bootstrapURLKeys={{
-          libraries: 'visualization',
-        }}
-        onClick={this.mapOnClick}
-        styles = {[{
-            featureType: 'poi.business',
-            elementType: 'labels',
-            stylers: [{
-                visibility: 'on'
-            }]
-        }]}
-        zoom={this.state.zoom}
-        onIdle = {this.onIdle}
-      >
-
-      <HeatmapLayer
-        data={this.getData()}
-        options={{radius: 20}}
-      />
-
-      <Marker
-              google={window.google} position={this.state.center} icon={marker}/>
-
-      <Autocomplete
-          style={{
-            width: "35%",
-            height: "45px",
-            position: `absolute`,
-            top: "70px",
-            borderRadius: "10px",
-            border: "none",
-            marginLeft: "1em",
-            paddingLeft: "1em",
-            boxShadow:
-              "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
-            fontSize: "15px",
-            fontFamily: "Josefin Sans"
-          }}
-          onPlaceSelected={(place) => {this.onPlaceSelected(place)}}
-          types={["geocode"]}
-          placeholder={"Enter a location"}
-        />
-
-        <SearchBox
-          ref={this.onSearchBoxMounted}
-          bounds={this.state.bounds}
-          controlPosition={window.google.maps.ControlPosition.TOP_LEFT}
-          onPlacesChanged={this.onPlacesChanged}
-        >
-          <input
-            type="text"
-            placeholder="Where do you want to go?"
-            style={{
-              boxSizing: `border-box`,
-              border: `1px solid transparent`,
-              width: `240px`,
-              height: `45px`,
-              borderRadius: "10px",
-              marginLeft: "-200px",
-              paddingLeft: "1em",
-              marginTop: `120px`,
-              boxShadow:
-                "0 2px 10px 0 rgba(0, 0, 0, 0.1), 0 2px 10px 0 rgba(0, 0, 0, 0.19)",
-              fontSize: "15px",
-              fontFamily: "Josefin Sans",
-              textOverflow: `ellipses`,
-            }}
-          />
-        </SearchBox>
-        {this.state.markers.map((marker, index) =>
-          <Marker key={index} position={marker.position} />
-        )}
-      </GoogleMap>
-    ));
 
     return (
       <>
@@ -414,15 +379,7 @@ class Dashboard extends React.Component {
           mapElement={<div style={{ height: `100%`, width: `100%`, position: `relative` }}/>}
         />
 
-        <div id="right_over_map">
-          <div className="column-right-align">
-            <div className="trending-box">
-              <div className="trending-text">
-                <h3 className="trending-title">Dashboard</h3>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </>
     );
   }

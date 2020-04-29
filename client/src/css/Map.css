@@ -50,6 +50,28 @@
 
 }
 
+.trending-button {
+  font-size: 16px;
+  color: var(--blueDark);
+  font-family: 'Josefin Sans', sans-serif;
+  width: 15vw;
+  height: 5px;
+  padding: .4em .8em;
+  border:none;
+  background: var(--white);
+  opacity: .8;
+  border-radius: 7px;
+  margin-top: 7px;
+  margin-right: 10px;
+  margin-left: 10px;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 2px 4px 0 rgba(0, 0, 0, 0.19);
+}
+
+.trending-button:hover {
+  background-color: var(--grey);
+  cursor: pointer;
+}
+
 .trending-box {
   display: flex;
   align-items: flex-start;
