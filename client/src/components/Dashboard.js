@@ -233,10 +233,25 @@ class Dashboard extends React.Component {
                     return (
                       <div style={{width: "100%", textAlign: 'left'}}>
                       <div className="trending-button" onClick={() => refs.map.panTo(new window.google.maps.LatLng(place.lat, place.lng))} style={{display: "inline-block", margin: '1px', height: "auto"}}>
-                      {index+1}. {" "}{place.name}
-                      <div>{"Rating: " + place.rating}</div>
-                      <div>{"Address: " + place.address}</div>
-                      <div>{"Probability: " + place.probability}</div>
+                      {(place.picture) ?
+                        <div style={{display: "table"}}>
+                            <div style={{float: "left",width:"40%"}}>
+                              <img src={place.picture[0].getUrl()} style={{borderRadius:"20px"}}width="100%"/>
+                            </div>
+                            <div style={{float: "left",width:"50%", margin:"10px"}}>
+                            <div>{place.name}</div>
+                            <p><b>{"Rating: "}</b> {place.rating}</p>
+                            <p><b>{"Address: "}</b>{place.address}</p>
+                            <p><b>{"Probability: "}</b>{place.probability}</p>
+                            </div>
+                          </div>
+                          :
+                        <div>
+                          <div>{place.name}</div>
+                          <p><b>{"Rating: "}</b> {place.rating}</p>
+                          <p><b>{"Address: "}</b>{place.address}</p>
+                          <p><b>{"Probability: "}</b>{place.probability}</p>
+                          </div>}
                       </div>
                       </div>
                     )
@@ -322,7 +337,17 @@ class Dashboard extends React.Component {
 
     <HeatmapLayer
       data={this.getData()}
-      options={{radius: 20}}
+      options={{radius: 30, gradient: ["rgba(102, 255, 0, 0)",
+                "rgba(102, 255, 0, 1)",
+                "rgba(147, 255, 0, 1)",
+                "rgba(193, 255, 0, 1)",
+                "rgba(238, 255, 0, 1)",
+                "rgba(244, 227, 0, 1)",
+                "rgba(249, 198, 0, 1)",
+                "rgba(255, 170, 0, 1)",
+                "rgba(255, 113, 0, 1)",
+                "rgba(255, 57, 0, 1)",
+                "rgba(255, 0, 0, 1)"], opacity: 1}}
     />
 
     <SearchBox

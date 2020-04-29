@@ -50,13 +50,24 @@
 
 }
 
+.column {
+  float: left;
+  width: 50%;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
 .trending-button {
   font-size: 16px;
   color: var(--blueDark);
   font-family: 'Josefin Sans', sans-serif;
   width: 15vw;
   height: 5px;
-  padding: .4em .8em;
+  padding: 1em;
   border:none;
   background: var(--white);
   opacity: .8;

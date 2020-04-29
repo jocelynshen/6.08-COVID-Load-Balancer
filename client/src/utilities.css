@@ -101,8 +101,10 @@ p {
   color: var(--darkestgrey);
   font-family: 'Lato', sans-serif;
   font-weight: 300;
-  text-align: center;
-  font-size: 17px;
+  text-align: left;
+  font-size: 14px;
+  margin: 0;
+  padding: 0;
 }
 
 form {
