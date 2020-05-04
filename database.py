@@ -185,21 +185,24 @@ def request_handler(request):
         conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
         c = conn.cursor()  # move cursor into database (allows us to execute commands)
 
-        most_recent_con_value = (c.execute('''SELECT con FROM locations_table WHERE username = ? ORDER BY time DESC;''',(user,)).fetchone())[0]
+        most_recent_con_value = (c.execute('''SELECT con FROM locations_table WHERE username = ? ORDER BY time DESC;''',(user,)).fetchone())
 
         if 'confirmed' not in request['form']:
-            con = most_recent_con_value
+            con = most_recent_con_value[0] if most_recent_con_value!=None else 0
         else:
-            if most_recent_con_value == 0 and str(request['form']['confirmed'])=='true':
-                sql = ''' UPDATE locations_table
-                          SET con = 1 
-                          WHERE username = ?'''
-                c.execute(sql,(user,))
-            
+            if most_recent_con_value!=None:
+                if most_recent_con_value[0] == 0 and str(request['form']['confirmed'])=='true':
+                    sql = ''' UPDATE locations_table
+                            SET con = 1 
+                            WHERE username = ?'''
+                    c.execute(sql,(user,))
+                
             if str(request['form']['confirmed'])=='true':
                 con = 1
             elif str(request['form']['confirmed'])=='false':
                 con = 0
+           
+
         
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
 
