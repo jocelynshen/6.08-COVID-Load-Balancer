@@ -80,12 +80,7 @@ def request_handler(request):
                 two_weeks_ago = time_now- datetime.timedelta(days = 14) 
                 c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
                 
-                if 'start' in request['args'] and 'end' in request['args']:
-                    start = request['values']['start']
-                    end = request['values']['end']
-                    entries = c.execute('''SELECT * FROM locations_table WHERE time > ? AND time < ? ORDER BY time DESC;''',(start,end)).fetchall()
-                else:
-                    entries = c.execute('''SELECT * FROM locations_table ORDER BY time DESC;''').fetchall()
+                entries = c.execute('''SELECT * FROM locations_table ORDER BY time DESC;''').fetchall()
 
                 infected_users_raw = c.execute('''SELECT username FROM locations_table WHERE con = 1;''').fetchall()
                 infected_users = []
@@ -96,7 +91,6 @@ def request_handler(request):
 
                 # return infected_users
                 if entries:
-                    data = dict()
                     for entry in entries:
                         # Get state of person
                         loc = (entry[1], entry[2])
@@ -119,29 +113,18 @@ def request_handler(request):
                         # Find percent of population infected
                         percent_infected = infected_pop/state_pop
 
-                        if loc in data:                        
-                        # line['weight'] = hl_func(time_now,entry[3])
-                            if entry[0] in infected_users:
-                                data[loc] += hl_func(time_now,entry[3])
-                            else:
-                                data[loc] += hl_func(time_now,entry[3])*percent_infected
-                        else:
-                            if entry[0] in infected_users:
-                                data[loc] = hl_func(time_now,entry[3])
-                            else:
-                                data[loc] = hl_func(time_now,entry[3])*percent_infected
-                        # conn.commit()
-                        # conn.close()
-                        # return data
-                    # conn.commit()
-                    # conn.close()
-                    # return data
-                    for d in data:
                         line = {}
-                        line['lat'] = d[0]
-                        line['lon'] = d[1]
-                        line['weight'] = data[d]
+
+                        if entry[0] in infected_users:
+                            line['weight'] = hl_func(time_now,entry[3])
+                        else:
+                            line['weight'] = hl_func(time_now,entry[3])*percent_infected
+                        
+                        line['lat'] = entry[1]
+                        line['lon'] = entry[2]
+                        line['con'] = entry[4]
                         user_data.append(line)
+                        
                     conn.commit() # commit commands
                     conn.close() # close connection to database
                     # return data
@@ -163,12 +146,7 @@ def request_handler(request):
                 two_weeks_ago = time_now- datetime.timedelta(days = 14) 
                 c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 
-                if 'start' in request['args'] and 'end' in request['args']:
-                    start = request['values']['start']
-                    end = request['values']['end']
-                    entries = c.execute('''SELECT * FROM locations_table WHERE username = ? AND time > ? AND time < ? ORDER BY time DESC;''',(username,start,end)).fetchall()
-                else:
-                    entries = c.execute('''SELECT * FROM locations_table WHERE username = ? ORDER BY time DESC;''',(username,)).fetchall()
+                entries = c.execute('''SELECT * FROM locations_table WHERE username = ? ORDER BY time DESC;''',(username,)).fetchall()
 
                 infected_users_raw = c.execute('''SELECT username FROM locations_table WHERE con = 1;''').fetchall()
                 infected_users = []
@@ -178,7 +156,6 @@ def request_handler(request):
                         infected_users.append(name)
                 
                 if entries:
-                    data = dict()
                     for entry in entries:
                         # Get state of person
                         loc = (entry[1], entry[2])
@@ -198,23 +175,18 @@ def request_handler(request):
                         # Find percent of population infected
                         percent_infected = infected_pop/state_pop
 
-                        if loc in data:                        
-                        # line['weight'] = hl_func(time_now,entry[3])
-                            if entry[0] in infected_users:
-                                data[loc] += hl_func(time_now,entry[3])
-                            else:
-                                data[loc] += hl_func(time_now,entry[3])*percent_infected
-                        else:
-                            if entry[0] in infected_users:
-                                data[loc] = hl_func(time_now,entry[3])
-                            else:
-                                data[loc] = hl_func(time_now,entry[3])*percent_infected
-                    for d in data:
                         line = {}
-                        line['lat'] = d[0]
-                        line['lon'] = d[1]
-                        line['weight'] = data[d]
+
+                        if entry[0] in infected_users:
+                            line['weight'] = hl_func(time_now,entry[3])
+                        else:
+                            line['weight'] = hl_func(time_now,entry[3])*percent_infected
+                        
+                        line['lat'] = entry[1]
+                        line['lon'] = entry[2]
+                        line['con'] = entry[4]
                         user_data.append(line)
+
                     conn.commit() # commit commands
                     conn.close() # close connection to database
                     json_output = json.dumps(user_data)
@@ -228,12 +200,10 @@ def request_handler(request):
 
     elif (request['method']=='POST'):
         lon = float(request['form']['lon'])
-        # lon = float(request['values']['lon'])
         lat = float(request['form']['lat'])
-        # lat = float(request['values']['lat'])
+        
         try:
             if str(request['form']['confirmed']) == 'true':
-            # if str(request['values']['confirmed']) == 'true':
                 con = 1
             else:
                 con = 0
@@ -250,7 +220,7 @@ def request_handler(request):
             # c.execute('''UPDATE locations_table SET con = 1 WHERE user = ''' + user + ''';''')
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
         c.execute('''INSERT into locations_table VALUES (?,?,?,?,?);''', (user,lat,lon,time,con))
-        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(days = 14) 
+        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(seconds = 14) 
         c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 
         conn.commit() # commit commands

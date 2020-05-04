@@ -112,6 +112,7 @@ def request_handler(request):
                         r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
                         response = json.loads(r.text)
                         state = response['results'][0]['address_components'][5]['short_name']
+
                         state_pop = st_pop[state]
 
                         # Get information on # of infections in state of interest
@@ -126,11 +127,11 @@ def request_handler(request):
 
                         if entry[0] in infected_users:
                             weight = hl_func(time_now,entry[3])
-                            if weight > 0.5:
+                            if weight > 0.8:
                                 dangerous_points.append(loc)
                         else:
-                            weight = hl_func(time_now,entry[3])*percent_infected
-                            if weight > 0.5:
+                            weight = hl_func(time_now,entry[3])*(percent_infected*3)
+                            if weight > 0.006:
                                 dangerous_points.append(loc)
                     conn.commit()
                     conn.close()
