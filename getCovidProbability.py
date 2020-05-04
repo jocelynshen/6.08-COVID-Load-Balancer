@@ -209,8 +209,5 @@ def request_handler(request):
                 return covid_Prob_List
             else:
                 return "Not Authorized"  
-    
+
     return "Invalid Request"
-
-
-        
