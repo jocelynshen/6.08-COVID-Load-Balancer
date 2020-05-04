@@ -83,14 +83,6 @@ def request_handler(request):
                 conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
                 c = conn.cursor()  # move cursor into database (allows us to execute commands)
 
-                # find all infected users
-                infected_users_raw = c.execute('''SELECT username FROM locations_table WHERE con = 1;''').fetchall()
-                infected_users = []
-                for i in infected_users_raw: 
-                    name = i[0]
-                    if name not in infected_users:
-                        infected_users.append(name)
-
                 # find all dangerous points within 1km bounding box
                 dangerous_points = []
                 
@@ -107,8 +99,7 @@ def request_handler(request):
                 if len(entries) > 0:
                     for entry in entries:
                         # Get state of person
-                        loc = (entry[1], entry[2])
-                        loc_string = str(loc[0]) + "," + str(loc[1])
+                        loc_string = str(entry[1]) + "," + str(entry[2])
                         r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
                         response = json.loads(r.text)
                         state = response['results'][0]['address_components'][5]['short_name']
@@ -125,14 +116,33 @@ def request_handler(request):
                         # Find percent of population infected
                         percent_infected = infected_pop/state_pop
 
-                        if entry[0] in infected_users:
+                        if entry[4]==1:
                             weight = hl_func(time_now,entry[3])
                             if weight > 0.8:
+                                return_latitude = str(entry[1])
+                                return_longitude = str(entry[2])
+                                if len(return_latitude)<9:
+                                    for i in range(8-len(return_latitude)):
+                                        return_latitude+='0'
+                                if len(return_longitude)<9:
+                                    for i in range(8-len(return_longitude)):
+                                        return_longitude+='0'
+                                loc = (str(entry[1])[:8], str(entry[2])[:8])
                                 dangerous_points.append(loc)
                         else:
                             weight = hl_func(time_now,entry[3])*(percent_infected)
                             if weight > 0.006:
+                                return_latitude = str(entry[1])
+                                return_longitude = str(entry[2])
+                                if len(return_latitude)<9:
+                                    for i in range(8-len(return_latitude)):
+                                        return_latitude+='0'
+                                if len(return_longitude)<9:
+                                    for i in range(8-len(return_longitude)):
+                                        return_longitude+='0'
+                                loc = (str(entry[1])[:8], str(entry[2])[:8])
                                 dangerous_points.append(loc)
+
                     conn.commit()
                     conn.close()
                     return dangerous_points
