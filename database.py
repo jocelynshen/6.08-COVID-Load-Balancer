@@ -82,13 +82,6 @@ def request_handler(request):
                 
                 entries = c.execute('''SELECT * FROM locations_table ORDER BY time DESC;''').fetchall()
 
-                infected_users_raw = c.execute('''SELECT username FROM locations_table WHERE con = 1;''').fetchall()
-                infected_users = []
-                for i in infected_users_raw: 
-                    name = i[0]
-                    if name not in infected_users:
-                        infected_users.append(name)
-
                 # return infected_users
                 if entries:
                     for entry in entries:
@@ -114,12 +107,7 @@ def request_handler(request):
                         percent_infected = infected_pop/state_pop
 
                         line = {}
-
-                        if entry[0] in infected_users:
-                            line['weight'] = hl_func(time_now,entry[3])
-                        else:
-                            line['weight'] = hl_func(time_now,entry[3])*percent_infected
-                        
+                        line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
                         line['lat'] = entry[1]
                         line['lon'] = entry[2]
                         line['con'] = entry[4]
@@ -147,13 +135,6 @@ def request_handler(request):
                 c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 
                 entries = c.execute('''SELECT * FROM locations_table WHERE username = ? ORDER BY time DESC;''',(username,)).fetchall()
-
-                infected_users_raw = c.execute('''SELECT username FROM locations_table WHERE con = 1;''').fetchall()
-                infected_users = []
-                for i in infected_users_raw: 
-                    name = i[0]
-                    if name not in infected_users:
-                        infected_users.append(name)
                 
                 if entries:
                     for entry in entries:
@@ -176,12 +157,7 @@ def request_handler(request):
                         percent_infected = infected_pop/state_pop
 
                         line = {}
-
-                        if entry[0] in infected_users:
-                            line['weight'] = hl_func(time_now,entry[3])
-                        else:
-                            line['weight'] = hl_func(time_now,entry[3])*percent_infected
-                        
+                        line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
                         line['lat'] = entry[1]
                         line['lon'] = entry[2]
                         line['con'] = entry[4]
@@ -201,14 +177,6 @@ def request_handler(request):
     elif (request['method']=='POST'):
         lon = float(request['form']['lon'])
         lat = float(request['form']['lat'])
-        
-        try:
-            if str(request['form']['confirmed']) == 'true':
-                con = 1
-            else:
-                con = 0
-        except:
-            con = 0
 
         #still need to work on encrypting username
         user = str(request['form']['user'])
@@ -216,10 +184,27 @@ def request_handler(request):
 
         conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
         c = conn.cursor()  # move cursor into database (allows us to execute commands)
-        # if con == 1:
-            # c.execute('''UPDATE locations_table SET con = 1 WHERE user = ''' + user + ''';''')
+
+        most_recent_con_value = (c.execute('''SELECT con FROM locations_table WHERE username = ? ORDER BY time DESC;''',(user,)).fetchone())[0]
+
+        if 'confirmed' not in request['form']:
+            con = most_recent_con_value
+        else:
+            if most_recent_con_value == 0 and str(request['form']['confirmed'])=='true':
+                sql = ''' UPDATE locations_table
+                          SET con = 1 
+                          WHERE username = ?'''
+                c.execute(sql,(user,))
+            
+            if str(request['form']['confirmed'])=='true':
+                con = 1
+            elif str(request['form']['confirmed'])=='false':
+                con = 0
+        
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
+
         c.execute('''INSERT into locations_table VALUES (?,?,?,?,?);''', (user,lat,lon,time,con))
+        
         two_weeks_ago = datetime.datetime.now()- datetime.timedelta(days = 14) 
         c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 

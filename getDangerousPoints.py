@@ -130,7 +130,7 @@ def request_handler(request):
                             if weight > 0.8:
                                 dangerous_points.append(loc)
                         else:
-                            weight = hl_func(time_now,entry[3])*(percent_infected*3)
+                            weight = hl_func(time_now,entry[3])*(percent_infected)
                             if weight > 0.006:
                                 dangerous_points.append(loc)
                     conn.commit()
