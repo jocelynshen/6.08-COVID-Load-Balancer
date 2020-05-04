@@ -220,7 +220,7 @@ def request_handler(request):
             # c.execute('''UPDATE locations_table SET con = 1 WHERE user = ''' + user + ''';''')
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
         c.execute('''INSERT into locations_table VALUES (?,?,?,?,?);''', (user,lat,lon,time,con))
-        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(seconds = 14) 
+        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(days = 14) 
         c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 
         conn.commit() # commit commands
