@@ -105,7 +105,7 @@ void setup() {
                   WiFi.localIP()[1], WiFi.localIP()[0],
                   WiFi.macAddress().c_str() , WiFi.SSID().c_str());
     offloadData();
-
+    getDanger();
     delay(500);
   } else { //if we failed to connect just Try again.
     Serial.println("Failed to Connect :/  Going to restart");
@@ -123,22 +123,30 @@ void setup() {
   tft.println("3: Alert system that I have a confirmed case of COVID-19.");
 }
 
+int tempTimer = 0;
 void loop() {
   if (gps_serial.available()) {
     while (gps_serial.available())
       gps.encode(gps_serial.read());      // Check GPS
   }
+  
+ 
+  if(millis()-tempTimer>2000){
   bool danger = checkDanger();
+  Serial.println(danger);
   if (danger) {
-      for(int i=0;i<256;i+=2)
+    Serial.println("danger bois");
+    for(int j = 0; j<200; j++){
+    for(int i=0;i<256;i+=2)
     dacWrite(25,i);
   for(int i=254;i>=0;i-=2)
     dacWrite(25,i);
   for(int i=1;i<75;i+=2)
     dacWrite(25,i);
   for(int i=74;i>0;i-=2)
-    dacWrite(25,i);
-    
+    dacWrite(25,i);}
+    tempTimer = millis();
+  }
   }
   uint8_t val = digitalRead(PIN_1);
   fsm(val); // call fsm
@@ -517,7 +525,6 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   file.close();
 }
-
 //send all data on sd card to server
 void offloadData() {
   File root = SD.open("/data.txt");
@@ -546,18 +553,35 @@ void offloadData() {
 
 //get closest 5 danger
 void getDanger() {
+  char sexy_response[300] = "42.3562,-71.1007\n42.3563,-71.1008\n42.3562,-71.1008\n42.3562,-71.1006";
   File root = SD.open("/points.txt");
   if (root) {
     root.close();
     SD.remove("/points.txt");
-  }
-  char sexy_response[300] = "42.3562,71.1007\n42.3563,71.1008\n42.3562,71.1008\n42.3562, 71.1006";
+  }else{root.close();}
+  char req[200] = "";
+  sprintf(req, "?user=admin&password=adminpassword&location=%f%%2C%f", gps.location.lat(), gps.location.lng());
+  int body_len = strlen(req); //calculate body length (for header reporting)
+      sprintf(request_buffer, "GET http://608dev-2.net/sandbox/sc/team106/database.py HTTP/1.1\r\n");
+      strcat(request_buffer, "Host: 608dev-2.net\r\n");
+      strcat(request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
+      sprintf(request_buffer + strlen(request_buffer), "Content-Length: %d\r\n", body_len); //append string formatted to end of request buffer
+      strcat(request_buffer, "\r\n"); //new line from header to body
+      strcat(request_buffer, req); //body
+      Serial.println(request_buffer);
+      strcat(request_buffer, "\r\n"); //header
+      Serial.println("request buffer:");
+      Serial.println(request_buffer);
+      do_http_request(" http://608dev-2.net/sandbox/sc/team106/database.py", request_buffer, sexy_response, 300, RESPONSE_TIMEOUT, true);
+      Serial.println(sexy_response);
+      Serial.println("request sent");
+
 
   Serial.println("File doens't exist");
   Serial.println("Creating file...");
   writeFile(SD, "/points.txt", "");
-  appendFile(SD, "/data.txt", sexy_response);
-  root.close();
+  appendFile(SD, "/points.txt", sexy_response);
+
 }
 
 
@@ -566,12 +590,12 @@ void getDanger() {
 bool checkDanger() {
   File root = SD.open("/points.txt");
   bool danger = false;
-  Serial.println("flag hit!!!");
   //TODO based on return format
   char fileContents0[25]; // Probably can be smaller
   char fileContents1[25]; // Probably can be smaller
   byte index = 0;
   bool flag = false;
+  bool flag0 = false;
 
   if (gps.location.isValid()) {
     float curLat = gps.location.lat();
@@ -583,14 +607,18 @@ bool checkDanger() {
       {
         if (aChar == ',') {
           flag = true;
+          flag0=true;
           index = 0;
         }
         if (!flag) {
           fileContents0[index++] = aChar;
           fileContents0[index] = '\0'; // NULL terminate the array
         } else {
+          if(!flag0){
           fileContents1[index++] = aChar;
-          fileContents1[index] = '\0'; // NULL terminate the array}
+          fileContents1[index] = '\0'; // NULL terminate the array
+          }
+          flag0=false;
 
         }}
         else { // the character is CR or LF
@@ -599,10 +627,18 @@ bool checkDanger() {
 
             float checkLat = atof(fileContents0);
             float checkLon = atof(fileContents1);
-            float dist = pow(pow(checkLat - curLat, 2.0) + pow(checkLon - curLon, 2.0), 0.5) * 6371000;
+            float dist = pow(pow(checkLat - curLat, 2.0) + pow(checkLon - curLon, 2.0), 0.5) * 111195./2.0;
+            Serial.println("files");
+            Serial.println(fileContents1);
+            Serial.println("coords0:");
+            Serial.println(checkLat);
+            Serial.println(checkLon);
+            Serial.println("coords:");
+            Serial.println(curLat);
+            Serial.println(curLon);
             Serial.println("dinstance:");
             Serial.println(dist);
-            if (dist < 100000) {
+            if (dist < 250) {
               danger = true;
               Serial.println("flag hit!!!");
             }
@@ -611,7 +647,8 @@ bool checkDanger() {
           fileContents0[0] = '\0';
           fileContents1[0] = '\0';
           index = 0;
-          flag = false;;
+          flag = false;
+          flag0=false;
         }
       }
 
