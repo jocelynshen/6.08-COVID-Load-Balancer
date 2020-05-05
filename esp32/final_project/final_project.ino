@@ -553,12 +553,29 @@ void offloadData() {
 
 //get closest 5 danger
 void getDanger() {
+  char sexy_response[300] = "42.3562,-71.1007\n42.3563,-71.1008\n42.3562,-71.1008\n42.3562,-71.1006";
   File root = SD.open("/points.txt");
   if (root) {
     root.close();
     SD.remove("/points.txt");
   }else{root.close();}
-  char sexy_response[300] = "42.3562,-71.1007\n42.3563,-71.1008\n42.3562,-71.1008\n42.3562,-71.1006";
+  char req[200] = "";
+  sprintf(req, "?user=admin&password=adminpassword&location=%f%%2C%f", gps.location.lat(), gps.location.lng());
+  int body_len = strlen(req); //calculate body length (for header reporting)
+      sprintf(request_buffer, "GET http://608dev-2.net/sandbox/sc/team106/database.py HTTP/1.1\r\n");
+      strcat(request_buffer, "Host: 608dev-2.net\r\n");
+      strcat(request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
+      sprintf(request_buffer + strlen(request_buffer), "Content-Length: %d\r\n", body_len); //append string formatted to end of request buffer
+      strcat(request_buffer, "\r\n"); //new line from header to body
+      strcat(request_buffer, req); //body
+      Serial.println(request_buffer);
+      strcat(request_buffer, "\r\n"); //header
+      Serial.println("request buffer:");
+      Serial.println(request_buffer);
+      do_http_request(" http://608dev-2.net/sandbox/sc/team106/database.py", request_buffer, sexy_response, 300, RESPONSE_TIMEOUT, true);
+      Serial.println(sexy_response);
+      Serial.println("request sent");
+
 
   Serial.println("File doens't exist");
   Serial.println("Creating file...");
