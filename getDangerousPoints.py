@@ -84,7 +84,7 @@ def request_handler(request):
                 c = conn.cursor()  # move cursor into database (allows us to execute commands)
 
                 # find all dangerous points within 1km bounding box
-                dangerous_points = []
+                dangerous_points = ""
                 
                 R = 6371 #radius of the earth
                 lat_kil = math.degrees(0.5/R) #0.5km in latitude degree (constant)
@@ -127,8 +127,8 @@ def request_handler(request):
                                 if len(return_longitude)<9:
                                     for i in range(8-len(return_longitude)):
                                         return_longitude+='0'
-                                loc = (str(entry[1])[:8], str(entry[2])[:8])
-                                dangerous_points.append(loc)
+                                loc = str(return_latitude)[:8] + "," + str(return_longitude)[:8] + "\n"
+                                dangerous_points+=loc
                         else:
                             weight = hl_func(time_now,entry[3])*(percent_infected)
                             if weight > 0.006:
@@ -140,8 +140,8 @@ def request_handler(request):
                                 if len(return_longitude)<9:
                                     for i in range(8-len(return_longitude)):
                                         return_longitude+='0'
-                                loc = (str(entry[1])[:8], str(entry[2])[:8])
-                                dangerous_points.append(loc)
+                                loc = str(return_latitude)[:8] + "," + str(return_longitude)[:8] + "\n"
+                                dangerous_points+=loc
 
                     conn.commit()
                     conn.close()
