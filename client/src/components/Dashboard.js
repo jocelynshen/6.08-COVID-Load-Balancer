@@ -8,6 +8,7 @@ import Autocomplete from "react-google-autocomplete"
 const { SearchBox } = require("react-google-maps/lib/components/places/SearchBox");
 import { Link } from "react-router-dom";
 import marker from "../public/map-marker.png";
+const GoogleStyles = require("../../../GoogleMapStyles.json");
 import HeatmapLayer from "react-google-maps/lib/components/visualization/HeatmapLayer";
 import gpsButton from "../public/crosshairs-gps.png"
 const _ = require("lodash");
@@ -176,9 +177,6 @@ class Dashboard extends React.Component {
   lifecycle({
     componentWillMount() {
       const refs = {}
-
-
-
       this.setState({
         bounds: null,
         zoom: 13,
@@ -236,6 +234,7 @@ class Dashboard extends React.Component {
                       {(place.picture) ?
                         <div style={{display: "table"}}>
                             <div style={{float: "left",width:"40%"}}>
+                            {console.log(place.picture[0].getUrl())}
                               <img src={place.picture[0].getUrl()} style={{borderRadius:"20px"}}width="100%"/>
                             </div>
                             <div style={{float: "left",width:"50%", margin:"10px"}}>
@@ -312,6 +311,16 @@ class Dashboard extends React.Component {
     }]}
     zoom={props.zoom}
     onIdle = {props.onIdle}
+    defaultOptions={{
+      disableDefaultUI: true, // disable default map UI
+      zoomControl: true,
+      mapTypeControl: true,
+      scaleControl: true,
+      streetViewControl: true,
+      rotateControl: false,
+      fullscreenControl: false,
+      styles: GoogleStyles // change default map styles
+    }}
   >
   <Autocomplete
       style={{
@@ -330,24 +339,25 @@ class Dashboard extends React.Component {
       }}
       onPlaceSelected={(place) => {props.onPlaceSelected(place)}}
       types={["geocode"]}
-      placeholder={"Enter a location"}
+      placeholder={"Enter your location"}
     />
     <Marker
         google={window.google} position={props.center} icon={marker}/>
 
     <HeatmapLayer
       data={this.getData()}
-      options={{radius: 30, gradient: ["rgba(102, 255, 0, 0)",
-                "rgba(102, 255, 0, 1)",
-                "rgba(147, 255, 0, 1)",
-                "rgba(193, 255, 0, 1)",
-                "rgba(238, 255, 0, 1)",
-                "rgba(244, 227, 0, 1)",
-                "rgba(249, 198, 0, 1)",
-                "rgba(255, 170, 0, 1)",
-                "rgba(255, 113, 0, 1)",
-                "rgba(255, 57, 0, 1)",
+      options={{radius: 30, gradient: ["rgba(21, 0, 255, 0)",
+                "rgba(21, 0, 255, 1)",
+                "rgba(76, 0, 255, 1)",
+                "rgba(102, 0, 255, 1)",
+                "rgba(174, 0, 255, 1)",
+                "rgba(208, 0, 255, 1)",
+                "rgba(255, 0, 221, 1)",
+                "rgba(255, 0, 195, 1)",
+                "rgba(255, 0, 140, 1)",
+                "rgba(255, 0, 81, 1)",
                 "rgba(255, 0, 0, 1)"], opacity: 1}}
+
     />
 
     <SearchBox
@@ -358,11 +368,11 @@ class Dashboard extends React.Component {
     >
       <input
         type="text"
-        placeholder="Where do you want to go?"
+        placeholder="Enter a destination (ie. grocery store)"
         style={{
           boxSizing: `border-box`,
           border: `1px solid transparent`,
-          width: `240px`,
+          width: `300px`,
           height: `45px`,
           borderRadius: "10px",
           marginLeft: "-200px",
@@ -384,7 +394,6 @@ class Dashboard extends React.Component {
         <div className="trending-box">
           <div className="trending-text">
             <h3 className="trending-title">Dashboard</h3>
-            <h5>Places least likely to have covid:</h5>
             {props.card?props.card:""}
           </div>
         </div>
