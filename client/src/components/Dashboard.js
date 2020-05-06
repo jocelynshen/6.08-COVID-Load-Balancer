@@ -35,6 +35,13 @@ class Dashboard extends React.Component {
     // console.log("next state", nextState);
       if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data
         || this.state.markers != nextState.markers) {
+          fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
+              .then(response => response.json())
+              .then(data => {
+
+                this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]*100  }})})
+                // console.log("database results", data)
+              });
         return true
       } else {
         return false
@@ -197,10 +204,10 @@ class Dashboard extends React.Component {
         onPlacesChanged: () => {
           const places = refs.searchBox.getPlaces();
           const bounds = new google.maps.LatLngBounds();
-          console.log("nearby places found: ", places);
+          // console.log("nearby places found: ", places);
           let formattedPlacesList = places.map((place) => {return {"name": place.name, "lat": place.geometry.location.lat(), "lng": place.geometry.location.lng(), "rating": place.rating, "picture": place.photos, "address": place.formatted_address}})
           let query = formattedPlacesList.map((place) => {return place["lat"].toString() + "," + place["lng"].toString()});
-          console.log("formatted", formattedPlacesList);
+          // console.log("formatted", formattedPlacesList);
 
           places.forEach(place => {
             if (place.geometry.viewport) {
@@ -225,7 +232,7 @@ class Dashboard extends React.Component {
                   formattedPlacesList[i]["probability"] = data[i]
                 }
                 formattedPlacesList.sort((a, b) => (a.probability > b.probability) ? 1 : -1);
-                console.log("formatted places", formattedPlacesList);
+                // console.log("formatted places", formattedPlacesList);
 
                 let card = formattedPlacesList.map((place, index) => {
                     return (
@@ -234,7 +241,7 @@ class Dashboard extends React.Component {
                       {(place.picture) ?
                         <div style={{display: "table"}}>
                             <div style={{float: "left",width:"40%"}}>
-                            {console.log(place.picture[0].getUrl())}
+
                               <img src={place.picture[0].getUrl()} style={{borderRadius:"20px"}}width="100%"/>
                             </div>
                             <div style={{float: "left",width:"50%", margin:"10px"}}>
