@@ -105,13 +105,14 @@ void setup() {
                   WiFi.localIP()[1], WiFi.localIP()[0],
                   WiFi.macAddress().c_str() , WiFi.SSID().c_str());
     offloadData();
+    getDanger();
     delay(500);
   } else { //if we failed to connect just Try again.
     Serial.println("Failed to Connect :/  Going to restart");
     Serial.println(WiFi.status());
     ESP.restart(); // restart the ESP (proper way)
   }
-  
+
   timer = millis();
   old_val = digitalRead(PIN_1);
   tft.fillScreen(TFT_BLACK); //fill background
@@ -122,16 +123,35 @@ void setup() {
   tft.println("3: Alert system that I have a confirmed case of COVID-19.");
 }
 
+int tempTimer = 0;
 void loop() {
   if (gps_serial.available()) {
     while (gps_serial.available())
       gps.encode(gps_serial.read());      // Check GPS
   }
+  
+ 
+  if(millis()-tempTimer>2000){
+  bool danger = checkDanger();
+  Serial.println(danger);
+  if (danger) {
+    Serial.println("danger bois");
+    for(int j = 0; j<200; j++){
+    for(int i=0;i<256;i+=2)
+    dacWrite(25,i);
+  for(int i=254;i>=0;i-=2)
+    dacWrite(25,i);
+  for(int i=1;i<75;i+=2)
+    dacWrite(25,i);
+  for(int i=74;i>0;i-=2)
+    dacWrite(25,i);}
+    tempTimer = millis();
+  }
+  }
   uint8_t val = digitalRead(PIN_1);
   fsm(val); // call fsm
-  
-  Serial.println("hey");
-  if(store_data && (millis() - timer >= GET_GPS_CYCLE)){
+
+  if (store_data && (millis() - timer >= GET_GPS_CYCLE)) {
     storeData();
     timer = millis();
     Serial.println("stored data");
@@ -471,33 +491,6 @@ void storeData() {
 
 }
 
-//send all data on sd card to server
-void offloadData() {
-  File root = SD.open("/data.txt");
-  if (root) {
-    /* read from the file until there's nothing else in it */
-    while (root.available()) {
-
-      const char* body = root.readStringUntil('\n').c_str();
-      int body_len = strlen(body); //calculate body length (for header reporting)
-      sprintf(request_buffer, "POST http://608dev-2.net/sandbox/sc/team106/database.py HTTP/1.1\r\n");
-      strcat(request_buffer, "Host: 608dev-2.net\r\n");
-      strcat(request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
-      sprintf(request_buffer + strlen(request_buffer), "Content-Length: %d\r\n", body_len); //append string formatted to end of request buffer
-      strcat(request_buffer, "\r\n"); //new line from header to body
-      strcat(request_buffer, body); //body
-      strcat(request_buffer, "\r\n"); //header
-      Serial.println(request_buffer);
-      do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, true);
-      Serial.println("request sent");
-    }
-  }
-  root.close();
-  SD.remove("/data.txt");
-  Serial.println("data offloaded");
-}
-
-
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
 void writeFile(fs::FS &fs, const char * path, const char * message) {
@@ -532,3 +525,134 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
   }
   file.close();
 }
+//send all data on sd card to server
+void offloadData() {
+  File root = SD.open("/data.txt");
+  if (root) {
+    /* read from the file until there's nothing else in it */
+    while (root.available()) {
+
+      const char* body = root.readStringUntil('\n').c_str();
+      int body_len = strlen(body); //calculate body length (for header reporting)
+      sprintf(request_buffer, "POST http://608dev-2.net/sandbox/sc/team106/database.py HTTP/1.1\r\n");
+      strcat(request_buffer, "Host: 608dev-2.net\r\n");
+      strcat(request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
+      sprintf(request_buffer + strlen(request_buffer), "Content-Length: %d\r\n", body_len); //append string formatted to end of request buffer
+      strcat(request_buffer, "\r\n"); //new line from header to body
+      strcat(request_buffer, body); //body
+      strcat(request_buffer, "\r\n"); //header
+      Serial.println(request_buffer);
+      do_http_request("608dev-2.net", request_buffer, response_buffer, OUT_BUFFER_SIZE, RESPONSE_TIMEOUT, true);
+      Serial.println("request sent");
+    }
+  }
+  root.close();
+  SD.remove("/data.txt");
+  Serial.println("data offloaded");
+}
+
+//get closest 5 danger
+void getDanger() {
+  char sexy_response[300] = "42.3562,-71.1007\n42.3563,-71.1008\n42.3562,-71.1008\n42.3562,-71.1006";
+  File root = SD.open("/points.txt");
+  if (root) {
+    root.close();
+    SD.remove("/points.txt");
+  }else{root.close();}
+  char req[200] = "";
+  sprintf(req, "?user=admin&password=adminpassword&location=%f%%2C%f", gps.location.lat(), gps.location.lng());
+  int body_len = strlen(req); //calculate body length (for header reporting)
+      sprintf(request_buffer, "GET http://608dev-2.net/sandbox/sc/team106/database.py HTTP/1.1\r\n");
+      strcat(request_buffer, "Host: 608dev-2.net\r\n");
+      strcat(request_buffer, "Content-Type: application/x-www-form-urlencoded\r\n");
+      sprintf(request_buffer + strlen(request_buffer), "Content-Length: %d\r\n", body_len); //append string formatted to end of request buffer
+      strcat(request_buffer, "\r\n"); //new line from header to body
+      strcat(request_buffer, req); //body
+      Serial.println(request_buffer);
+      strcat(request_buffer, "\r\n"); //header
+      Serial.println("request buffer:");
+      Serial.println(request_buffer);
+      do_http_request(" http://608dev-2.net/sandbox/sc/team106/database.py", request_buffer, sexy_response, 300, RESPONSE_TIMEOUT, true);
+      Serial.println(sexy_response);
+      Serial.println("request sent");
+
+
+  Serial.println("File doens't exist");
+  Serial.println("Creating file...");
+  writeFile(SD, "/points.txt", "");
+  appendFile(SD, "/points.txt", sexy_response);
+
+}
+
+
+
+
+bool checkDanger() {
+  File root = SD.open("/points.txt");
+  bool danger = false;
+  //TODO based on return format
+  char fileContents0[25]; // Probably can be smaller
+  char fileContents1[25]; // Probably can be smaller
+  byte index = 0;
+  bool flag = false;
+  bool flag0 = false;
+
+  if (gps.location.isValid()) {
+    float curLat = gps.location.lat();
+    float curLon = gps.location.lng();
+    while (root.available()) {
+
+      char aChar = root.read();
+      if (aChar != '\n' && aChar != '\r')
+      {
+        if (aChar == ',') {
+          flag = true;
+          flag0=true;
+          index = 0;
+        }
+        if (!flag) {
+          fileContents0[index++] = aChar;
+          fileContents0[index] = '\0'; // NULL terminate the array
+        } else {
+          if(!flag0){
+          fileContents1[index++] = aChar;
+          fileContents1[index] = '\0'; // NULL terminate the array
+          }
+          flag0=false;
+
+        }}
+        else { // the character is CR or LF
+          if (strlen(fileContents0) > 0)
+          {
+
+            float checkLat = atof(fileContents0);
+            float checkLon = atof(fileContents1);
+            float dist = pow(pow(checkLat - curLat, 2.0) + pow(checkLon - curLon, 2.0), 0.5) * 111195./2.0;
+            Serial.println("files");
+            Serial.println(fileContents1);
+            Serial.println("coords0:");
+            Serial.println(checkLat);
+            Serial.println(checkLon);
+            Serial.println("coords:");
+            Serial.println(curLat);
+            Serial.println(curLon);
+            Serial.println("dinstance:");
+            Serial.println(dist);
+            if (dist < 250) {
+              danger = true;
+              Serial.println("flag hit!!!");
+            }
+          }
+
+          fileContents0[0] = '\0';
+          fileContents1[0] = '\0';
+          index = 0;
+          flag = false;
+          flag0=false;
+        }
+      }
+
+    }
+    root.close();
+    return danger;
+  }
