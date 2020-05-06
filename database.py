@@ -85,28 +85,31 @@ def request_handler(request):
 
                 if entries:
                     for entry in entries:
-                        # Get state of person
-                        loc = (entry[1], entry[2])
-                        loc_string = str(loc[0]) + "," + str(loc[1])
-                        r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
-                        response = json.loads(r.text)
-                        state = response['results'][0]['address_components'][5]['short_name']
-                        
-                        percent_infected = 0
-                        if state in st_pop:
-                            state_pop = st_pop[state]
+                        try:
+                            # Get state of person
+                            loc = (entry[1], entry[2])
+                            loc_string = str(loc[0]) + "," + str(loc[1])
+                            r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                            response = json.loads(r.text)
+                            state = response['results'][0]['address_components'][5]['short_name']
+                            
+                            percent_infected = 0
+                            if state in st_pop:
+                                state_pop = st_pop[state]
 
-                            # Get information on # of infections in state of interest
-                            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                            response2 = json.loads(r2.text)
-                            infected_pop = 0
-                            for s in response2:
-                                if 'state' in s:
-                                    if s['state'] == state:
-                                        infected_pop = s['positive']
+                                # Get information on # of infections in state of interest
+                                r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                                response2 = json.loads(r2.text)
+                                infected_pop = 0
+                                for s in response2:
+                                    if 'state' in s:
+                                        if s['state'] == state:
+                                            infected_pop = s['positive']
 
-                            # Find percent of population infected
-                            percent_infected = infected_pop/state_pop
+                                # Find percent of population infected
+                                percent_infected = infected_pop/state_pop
+                        except:
+                            percent_infected = 0.09
 
                         line = {}
                         line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
@@ -139,27 +142,30 @@ def request_handler(request):
                 if entries:
                     for entry in entries:
                         # Get state of person
-                        loc = (entry[1], entry[2])
-                        loc_string = str(loc[0]) + "," + str(loc[1])
-                        r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
-                        response = json.loads(r.text)
-                        state = response['results'][0]['address_components'][5]['short_name']
+                        try:
+                            loc = (entry[1], entry[2])
+                            loc_string = str(loc[0]) + "," + str(loc[1])
+                            r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                            response = json.loads(r.text)
+                            state = response['results'][0]['address_components'][5]['short_name']
 
-                        percent_infected = 0
-                        if state in st_pop:
-                            state_pop = st_pop[state]
+                            percent_infected = 0
+                            if state in st_pop:
+                                state_pop = st_pop[state]
 
-                            # Get information on # of infections in state of interest
-                            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                            response2 = json.loads(r2.text)
-                            infected_pop = 0
-                            for s in response2:
-                                if 'state' in s:
-                                    if s['state'] == state:
-                                        infected_pop = s['positive']
+                                # Get information on # of infections in state of interest
+                                r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                                response2 = json.loads(r2.text)
+                                infected_pop = 0
+                                for s in response2:
+                                    if 'state' in s:
+                                        if s['state'] == state:
+                                            infected_pop = s['positive']
 
-                            # Find percent of population infected
-                            percent_infected = infected_pop/state_pop
+                                # Find percent of population infected
+                                percent_infected = infected_pop/state_pop
+                        except:
+                            percent_infected = 0.09
 
                         line = {}
                         line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
@@ -207,8 +213,6 @@ def request_handler(request):
                 con = 1
             elif str(request['form']['confirmed'])=='false':
                 con = 0
-           
-
         
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
 

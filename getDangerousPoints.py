@@ -98,23 +98,26 @@ def request_handler(request):
                 # find weights of all points within 1km bounding box and add to dangerous_points if > 0.5   
                 if len(entries) > 0:
                     for entry in entries:
-                        # Get state of person
-                        loc_string = str(entry[1]) + "," + str(entry[2])
-                        r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
-                        response = json.loads(r.text)
-                        state = response['results'][0]['address_components'][5]['short_name']
+                        try:
+                            # Get state of person
+                            loc_string = str(entry[1]) + "," + str(entry[2])
+                            r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                            response = json.loads(r.text)
+                            state = response['results'][0]['address_components'][5]['short_name']
 
-                        state_pop = st_pop[state]
+                            state_pop = st_pop[state]
 
-                        # Get information on # of infections in state of interest
-                        r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                        response2 = json.loads(r2.text)
-                        for s in response2:
-                            if s['state'] == state:
-                                infected_pop = s['positive']
+                            # Get information on # of infections in state of interest
+                            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                            response2 = json.loads(r2.text)
+                            for s in response2:
+                                if s['state'] == state:
+                                    infected_pop = s['positive']
 
-                        # Find percent of population infected
-                        percent_infected = infected_pop/state_pop
+                            # Find percent of population infected
+                            percent_infected = infected_pop/state_pop
+                        except:
+                            percent_infected = 0.09
 
                         if entry[4]==1:
                             weight = hl_func(time_now,entry[3])
