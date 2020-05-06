@@ -35,13 +35,6 @@ class Dashboard extends React.Component {
     // console.log("next state", nextState);
       if (this.state.center.lat !== nextState.center.lat || this.state.center.lng !== nextState.center.lng || this.state.data != nextState.data
         || this.state.markers != nextState.markers) {
-          fetch('http://608dev-2.net/sandbox/sc/team106/database.py?user=admin&password=adminpassword')
-              .then(response => response.json())
-              .then(data => {
-
-                this.setState({data: data.map((x) => {return {  location: new window.google.maps.LatLng(x["lat"],x["lon"]), weight: x["weight"]*100  }})})
-                // console.log("database results", data)
-              });
         return true
       } else {
         return false
