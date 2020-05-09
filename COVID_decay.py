@@ -84,6 +84,10 @@ def weights(insert, print_entries, print_weights, print_heatmap):
 	c.execute('''CREATE TABLE IF NOT EXISTS covid_table (user text,lat int, lon int, timing timestamp, confirmed int);''')
 	seventytwo_hours_ago = datetime.datetime.now()-datetime.timedelta(hours = 72)
 	c.execute('''DELETE FROM covid_table WHERE timing < ?;''',(seventytwo_hours_ago,))
+	trial = c.execute('''SELECT user FROM covid_table WHERE confirmed = 1;''').fetchall()
+	conn.commit()
+	conn.close()
+	return trial
 	if insert:
 		users = ["Abraham", "Jocelyn", "Jackie", "Amanda", "Annie", "Joe"]
 		infected_list = []
@@ -96,7 +100,7 @@ def weights(insert, print_entries, print_weights, print_heatmap):
 		# insert 20 random
 		for x in range(20):
 			# user = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(10)) #make random user name
-			u = random.choice(users)
+			u = str(random.choice(users))
 			# lat = random.randint(0,5)
 			lat = random.choice(x_locs)
 			# lon = random.randint(0,5)
@@ -109,19 +113,19 @@ def weights(insert, print_entries, print_weights, print_heatmap):
 			else:
 				infected = 1
 			if ((u not in infected_list) and (infected == 1)):
-				if u == "Abraham":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Abraham';''')
-				elif u == "Jocelyn":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Jocelyn';''')
-				elif u == "Jackie":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Jackie';''')
-				elif u == "Amanda":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Amanda';''')
-				elif u == "Annie":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Annie';''')
-				elif u == "Joe":
-					c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Joe';''')
-				# c.execute('''UPDATE covid_table SET infected = 1 WHERE user = 'u';''')
+				# if u == "Abraham":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Abraham';''')
+				# elif u == "Jocelyn":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Jocelyn';''')
+				# elif u == "Jackie":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Jackie';''')
+				# elif u == "Amanda":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Amanda';''')
+				# elif u == "Annie":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Annie';''')
+				# elif u == "Joe":
+				# 	c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = 'Joe';''')
+				c.execute('''UPDATE covid_table SET confirmed = 1 WHERE user = ''' + u + ''';''')
 				infected_list.append(u)
 			c.execute('''INSERT into covid_table VALUES (?,?,?,?,?);''',(u,lat,lon,time,infected))
 	things = c.execute('''SELECT * FROM covid_table ORDER BY timing DESC;''').fetchall()
@@ -212,9 +216,9 @@ def find_weights(things, time_now):
 					weights[loc][1] += 1
 			else:
 				if entry[4] == 0:
-					weights[(loc)] = [hl_func(td_mins)*percent_infected, 1]
+					weights[loc] = [hl_func(td_mins)*percent_infected, 1]
 				else:
-					weights[(loc)] = [hl_func(td_mins), 1]
+					weights[loc] = [hl_func(td_mins), 1]
 	return weights
 
 # print(int(round(4.999)))
