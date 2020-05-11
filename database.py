@@ -6,6 +6,8 @@ import string
 import time
 
 visits_db = '__HOME__/locations.db'
+update_db = '__HOME__/update.db'
+infected_db = '__HOME__/infected.db'
 
 st_pop = dict()
 st_pop["AK"] = 731545
@@ -59,6 +61,8 @@ st_pop["WA"] = 7615000
 st_pop["WI"] = 5822000
 st_pop["WV"] = 1792000
 st_pop["WY"] = 578759
+st_pop["QC"] = 8485000
+
 
 def request_handler(request):
     def hl_func(time_now,time_entry):
@@ -68,6 +72,46 @@ def request_handler(request):
         td_mins = int(round(td.total_seconds()/60))
         return 0.5**(td_mins/390)
 
+    # Only update infected population information once a day
+    def check_update(state):
+        time_now = datetime.datetime.now()
+        one_day_ago = time_now- datetime.timedelta(days = 1) 
+        conn = sqlite3.connect(update_db)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS update_table (update_time timestamp);''') # run a CREATE TABLE command
+        entries = c.execute('''SELECT * FROM update_table WHERE update_time > ? ORDER BY update_time DESC;''',(one_day_ago,)).fetchone()
+        if entries == None:
+            # Need to get updated stats
+            infected_db = '__HOME__/infected.db'
+            # infected_db = "infected.db"
+            conn2 = sqlite3.connect(infected_db)
+            c2 = conn2.cursor()
+            c2.execute('''CREATE TABLE IF NOT EXISTS infected_table (state text, cases int);''') # run a CREATE TABLE command
+            c2.execute('''DELETE FROM infected_table;''')
+            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+            response2 = json.loads(r2.text)
+            for s in response2:
+                num_infected = int(s['positive'])
+                st = s['state']
+                c2.execute('''INSERT into infected_table VALUES (?,?);''',(st, num_infected))
+            conn2.commit()
+            conn2.close()
+            c.execute('''INSERT into update_table VALUES (?);''',(time_now,))
+            conn.commit() # commit commands
+            conn.close()
+            return "again"
+        else:
+            infected_db = '__HOME__/infected.db'
+            conn2 = sqlite3.connect(infected_db)
+            c2 = conn2.cursor()
+            entries = c2.execute('''SELECT * FROM infected_table WHERE state = (?);''',(state,)).fetchall()
+            infected_num = entries[0][1]
+            conn2.commit()
+            conn2.close()
+            conn.commit() # commit commands
+            conn.close()
+            return infected_num
+
     if (request['method']=='GET'):
         if 'user' in request['args'] and 'password' in request['args']:
             if 'admin'==request['values']['user'] and 'adminpassword'==request['values']['password']:
@@ -75,49 +119,61 @@ def request_handler(request):
                 entries = []
                 time_now = datetime.datetime.now()
 
+                # visits_db = "visits.db"
+                visits_db = '__HOME__/locations.db'
+
                 conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
                 c = conn.cursor()  # move cursor into database (allows us to execute commands)
-                two_weeks_ago = time_now- datetime.timedelta(days = 14) 
+                two_weeks_ago = time_now- datetime.timedelta(days = 3) 
                 c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
-                
                 entries = c.execute('''SELECT * FROM locations_table ORDER BY time DESC;''').fetchall()
+                num_entries = len(entries)
 
-                # return infected_users
                 if entries:
                     for entry in entries:
                         # Get state of person
                         loc = (entry[1], entry[2])
                         loc_string = str(loc[0]) + "," + str(loc[1])
-                        r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                        r = requests.get("""http://www.mapquestapi.com/geocoding/v1/reverse?key=yGPUKM7cJGVAlMYN8a8suPLSZVrjEM3t&location={}""".format(loc_string), timeout = None)
                         response = json.loads(r.text)
-                        # print(response)
-                        state = response['results'][0]['address_components'][5]['short_name']
-                        # print("hello")
-                        # state = 'NY'
-                        state_pop = st_pop[state]
+                        state = response['results'][0]['locations'][0]['adminArea3']
+                        country = response['results'][0]['locations'][0]['adminArea1']
+                      
+                        percent_infected = 0
+                        if country == 'US':
+                            if state in st_pop:
+                                # Only consider locations within 50 states + DC
+                                state_pop = st_pop[state]
 
-                        # Get information on # of infections in state of interest
-                        r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                        response2 = json.loads(r2.text)
-                        for s in response2:
-                            if s['state'] == state:
-                                infected_pop = s['positive']
+                                # Get information on # of infections in state of interest
+                                if num_entries < 25:
+                                    r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                                    response2 = json.loads(r2.text)
+                                    infected_pop = 0
+                                    for s in response2:
+                                        if 'state' in s:
+                                            if s['state'] == state:
+                                                infected_pop = s['positive']
+                                else:
+                                    check = check_update(state)
+                                    if check == "again":
+                                        return "Had to update data. Please try again."
+                                    else:
+                                        infected_pop = check
 
-                        # Find percent of population infected
-                        percent_infected = infected_pop/state_pop
+                                # Find percent of population infected
+                                percent_infected = infected_pop/state_pop
 
-                        line = {}
-                        line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
-                        line['lat'] = entry[1]
-                        line['lon'] = entry[2]
-                        line['con'] = entry[4]
-                        user_data.append(line)
-                        
+                                line = {}
+                                line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
+                                line['lat'] = entry[1]
+                                line['lon'] = entry[2]
+                                line['con'] = entry[4]
+                                user_data.append(line)
+
                     conn.commit() # commit commands
                     conn.close() # close connection to database
-                    # return data
                     json_output = json.dumps(user_data)
-                    # return data
                     return json_output
                 else:
                     conn.commit() # commit commands
@@ -131,9 +187,8 @@ def request_handler(request):
                 entries = []
                 conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
                 c = conn.cursor()  # move cursor into database (allows us to execute commands)
-                two_weeks_ago = time_now- datetime.timedelta(days = 14) 
+                two_weeks_ago = time_now- datetime.timedelta(days = 3) 
                 c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
-
                 entries = c.execute('''SELECT * FROM locations_table WHERE username = ? ORDER BY time DESC;''',(username,)).fetchall()
                 
                 if entries:
@@ -141,27 +196,42 @@ def request_handler(request):
                         # Get state of person
                         loc = (entry[1], entry[2])
                         loc_string = str(loc[0]) + "," + str(loc[1])
-                        r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                        r = requests.get("""http://www.mapquestapi.com/geocoding/v1/reverse?key=yGPUKM7cJGVAlMYN8a8suPLSZVrjEM3t&location={}""".format(loc_string), timeout = None)
                         response = json.loads(r.text)
-                        state = response['results'][0]['address_components'][5]['short_name']
-                        state_pop = st_pop[state]
+                        state = response['results'][0]['locations'][0]['adminArea3']
+                        country = response['results'][0]['locations'][0]['adminArea1']
 
-                        # Get information on # of infections in state of interest
-                        r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                        response2 = json.loads(r2.text)
-                        for s in response2:
-                            if s['state'] == state:
-                                infected_pop = s['positive']
+                        percent_infected = 0
+                        if country == 'US':
+                            if state in st_pop:
+                                # Only consider locations within 50 states + DC
+                                state_pop = st_pop[state]
 
-                        # Find percent of population infected
-                        percent_infected = infected_pop/state_pop
+                                # Get information on # of infections in state of interest
+                                if num_entries < 25:
+                                    r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                                    response2 = json.loads(r2.text)
+                                    infected_pop = 0
+                                    for s in response2:
+                                        if 'state' in s:
+                                            if s['state'] == state:
+                                                infected_pop = s['positive']
+                                else:
+                                    check = check_update(state)
+                                    if check == "again":
+                                        return "Had to update data. Please try again."
+                                    else:
+                                        infected_pop = check
 
-                        line = {}
-                        line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
-                        line['lat'] = entry[1]
-                        line['lon'] = entry[2]
-                        line['con'] = entry[4]
-                        user_data.append(line)
+                                # Find percent of population infected
+                                percent_infected = infected_pop/state_pop
+
+                                line = {}
+                                line['weight'] = hl_func(time_now,entry[3])*percent_infected if int(entry[4])==0 else (hl_func(time_now,entry[3]))
+                                line['lat'] = entry[1]
+                                line['lon'] = entry[2]
+                                line['con'] = entry[4]
+                                user_data.append(line)
 
                     conn.commit() # commit commands
                     conn.close() # close connection to database
@@ -175,6 +245,7 @@ def request_handler(request):
         return "Incorrect query"
 
     elif (request['method']=='POST'):
+        con = 0
         lon = float(request['form']['lon'])
         lat = float(request['form']['lat'])
 
@@ -182,8 +253,11 @@ def request_handler(request):
         user = str(request['form']['user'])
         time = datetime.datetime.now()
 
+        # visits_db = "visits.db"
+        visits_db = '__HOME__/locations.db'
         conn = sqlite3.connect(visits_db)  # connect to that database (will create if it doesn't already exist)
         c = conn.cursor()  # move cursor into database (allows us to execute commands)
+        c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
 
         most_recent_con_value = (c.execute('''SELECT con FROM locations_table WHERE username = ? ORDER BY time DESC;''',(user,)).fetchone())
 
@@ -201,14 +275,12 @@ def request_handler(request):
                 con = 1
             elif str(request['form']['confirmed'])=='false':
                 con = 0
-           
-
         
         c.execute('''CREATE TABLE IF NOT EXISTS locations_table (username text,latitude float, longitude float, time timestamp, con int);''') # run a CREATE TABLE command
 
         c.execute('''INSERT into locations_table VALUES (?,?,?,?,?);''', (user,lat,lon,time,con))
         
-        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(days = 14) 
+        two_weeks_ago = datetime.datetime.now()- datetime.timedelta(days = 3) 
         c.execute('''DELETE FROM locations_table WHERE time < ?;''', (two_weeks_ago,))
 
         conn.commit() # commit commands

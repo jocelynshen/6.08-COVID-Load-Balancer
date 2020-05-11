@@ -62,6 +62,46 @@ st_pop["WV"] = 1792000
 st_pop["WY"] = 578759
 
 def request_handler(request):
+    # Only update infected population information once a day
+    def check_update(state):
+        time_now = datetime.datetime.now()
+        one_day_ago = time_now- datetime.timedelta(days = 1) 
+        conn = sqlite3.connect(update_db)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS update_table (update_time timestamp);''') # run a CREATE TABLE command
+        entries = c.execute('''SELECT * FROM update_table WHERE update_time > ? ORDER BY update_time DESC;''',(one_day_ago,)).fetchone()
+        if entries == None:
+            # Need to get updated stats
+            infected_db = '__HOME__/infected.db'
+            # infected_db = "infected.db"
+            conn2 = sqlite3.connect(infected_db)
+            c2 = conn2.cursor()
+            c2.execute('''CREATE TABLE IF NOT EXISTS infected_table (state text, cases int);''') # run a CREATE TABLE command
+            c2.execute('''DELETE FROM infected_table;''')
+            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+            response2 = json.loads(r2.text)
+            for s in response2:
+                num_infected = int(s['positive'])
+                st = s['state']
+                c2.execute('''INSERT into infected_table VALUES (?,?);''',(st, num_infected))
+            conn2.commit()
+            conn2.close()
+            c.execute('''INSERT into update_table VALUES (?);''',(time_now,))
+            conn.commit() # commit commands
+            conn.close()
+            return "again"
+        else:
+            infected_db = '__HOME__/infected.db'
+            conn2 = sqlite3.connect(infected_db)
+            c2 = conn2.cursor()
+            entries = c2.execute('''SELECT * FROM infected_table WHERE state = (?);''',(state,)).fetchall()
+            infected_num = entries[0][1]
+            conn2.commit()
+            conn2.close()
+            conn.commit() # commit commands
+            conn.close()
+            return infected_num
+
     def average_weight(entries,time_now,infected_list):
         if len(entries)>0:
             sum = 0
@@ -70,17 +110,27 @@ def request_handler(request):
                 # Get state of person
                 loc = (entry[1], entry[2])
                 loc_string = str(loc[0]) + "," + str(loc[1])
-                r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
+                r = requests.get("""http://www.mapquestapi.com/geocoding/v1/reverse?key=yGPUKM7cJGVAlMYN8a8suPLSZVrjEM3t&location={}""".format(loc_string), timeout = None)
                 response = json.loads(r.text)
-                state = response['results'][0]['address_components'][5]['short_name']
-                state_pop = st_pop[state]
+                state = response['results'][0]['locations'][0]['adminArea3']
+                if state in st_pop:
+                    state_pop = st_pop[state]
+                else:
+                    return "Invalid State"
 
                 # Get information on # of infections in state of interest
-                r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                response2 = json.loads(r2.text)
-                for s in response2:
-                    if s['state'] == state:
-                        infected_pop = s['positive']
+                if len(entries) < 25:
+                    r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
+                    response2 = json.loads(r2.text)
+                    for s in response2:
+                        if s['state'] == state:
+                            infected_pop = s['positive']
+                else:
+                    check = check_update(state)
+                    if check == "again":
+                        return "Had to update data. Please try again."
+                    else:
+                        infected_pop = check
 
                 # Find percent of population infected
                 percent_infected = infected_pop/state_pop
@@ -135,9 +185,6 @@ def request_handler(request):
                     if name not in infected_users:
                         infected_users.append(name)
 
-                # conn.commit() # commit commands
-                # conn.close()
-                # return infected_users
                 i=0
                 while i<len(locations_list)-1:
                     lat = locations_list[i]
@@ -148,62 +195,8 @@ def request_handler(request):
                                         WHERE latitude BETWEEN ?-? AND ?+?
                                         AND
                                         longitude BETWEEN ?-? AND ?+?;''', (lat,lat_kil,lat,lat_kil,lon,lon_kil,lon,lon_kil)).fetchall()
-                    # return entries
                     i+=2
-                    # return infected_users
-                    # covid_Prob_List.append(average_weight(entries,time_now,infected_users))
-                    sum = 0
-                    data = dict()
-                    if len(entries) > 0:
-                        for entry in entries:
-                            # Get state of person
-                            loc = (entry[1], entry[2])
-                            loc_string = str(loc[0]) + "," + str(loc[1])
-                            r = requests.get("""https://maps.googleapis.com/maps/api/geocode/json?latlng={}&key=AIzaSyDvVizVjnvuSofxwp5IbWAoaJrp718YHus""".format(loc_string))
-                            response = json.loads(r.text)
-                            state = response['results'][0]['address_components'][5]['short_name']
-                            state_pop = st_pop[state]
-
-                            # Get information on # of infections in state of interest
-                            r2 = requests.get("""https://covidtracking.com/api/v1/states/current.json""")
-                            response2 = json.loads(r2.text)
-                            for s in response2:
-                                if s['state'] == state:
-                                    infected_pop = s['positive']
-
-                            # Find percent of population infected
-                            percent_infected = infected_pop/state_pop
-
-                            # return percent_infected
-
-                            if loc in data:                        
-                            # line['weight'] = hl_func(time_now,entry[3])
-                                # data[loc] += hl_func(time_now,entry[3])
-
-                                if entry[0] in infected_users:
-                                    data[loc] += hl_func(time_now,entry[3])
-                                else:
-                                    data[loc] += hl_func(time_now,entry[3])*percent_infected
-                            else:
-                                # data[loc] = hl_func(time_now,entry[3])
-
-                                if entry[0] in infected_users:
-                                    data[loc] = hl_func(time_now,entry[3])
-                                else:
-                                    data[loc] = hl_func(time_now,entry[3])*percent_infected
-                        # return data
-                        for d in data:
-                            sum += data[d]
-                        covid_Prob_List.append(sum/len(entries))
-                    else:
-                        covid_Prob_List.append(0)
-                    # conn.commit() # commit commands
-                    # conn.close()
-                    # return covid_Prob_List
-                #return "what"
-                # conn.commit()
-                # conn.close()
-                # return entries
+                    covid_Prob_List.append(average_weight(entries,time_now,infected_users))
                 conn.commit()
                 conn.close()
                 return covid_Prob_List
